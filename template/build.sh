@@ -1,5 +1,6 @@
 #!/bin/sh
 
+mkdir -p build
 cp -R ./migration ./build
 cp -R ./script ./build
 cp -R ./config ./build

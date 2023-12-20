@@ -22,7 +22,7 @@ import (
 	"{{domain}}/{{app_name}}/internal/data"
 )
 
-func CpuCheck(ctx context.Context) (*data.CpuCheckData, *terror.Terror) {
+func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 	cores, _ := cpu.Counts(false)
 
 	avgStat, _ := load.Avg()
@@ -30,26 +30,26 @@ func CpuCheck(ctx context.Context) (*data.CpuCheckData, *terror.Terror) {
 	load5 := avgStat.Load5
 	load15 := avgStat.Load15
 
-	cpuCheckData := &data.CpuCheckData{
+	cpuCheckRespData := &data.CpuCheckRespData{
 		StatusCode: http.StatusOK,
 
 		Status: "ErrorCodeOK",
 	}
 
 	if load5 >= float64(cores-1) {
-		cpuCheckData.StatusCode = http.StatusInternalServerError
-		cpuCheckData.Status = "CRITICAL"
+		cpuCheckRespData.StatusCode = http.StatusInternalServerError
+		cpuCheckRespData.Status = "CRITICAL"
 	} else if load5 >= float64(cores-2) {
-		cpuCheckData.StatusCode = http.StatusTooManyRequests
-		cpuCheckData.Status = "WARNING"
+		cpuCheckRespData.StatusCode = http.StatusTooManyRequests
+		cpuCheckRespData.Status = "WARNING"
 	}
 
-	cpuCheckData.Detail = fmt.Sprintf("%s - Load average: %.2f, %.2f, %.2f | Cores: %d", cpuCheckData.Status, load1, load5, load15, cores)
+	cpuCheckRespData.Detail = fmt.Sprintf("%s - Load average: %.2f, %.2f, %.2f | Cores: %d", cpuCheckRespData.Status, load1, load5, load15, cores)
 
-	return cpuCheckData, nil
+	return cpuCheckRespData, nil
 }
 
-func RamCheck(ctx context.Context) (*data.RamCheckData, *terror.Terror) {
+func RamCheck(ctx context.Context) (*data.RamCheckRespData, *terror.Terror) {
 	virtualMemoryStat, _ := mem.VirtualMemory()
 
 	usedMB := int(virtualMemoryStat.Used) / constant.MB
@@ -60,21 +60,21 @@ func RamCheck(ctx context.Context) (*data.RamCheckData, *terror.Terror) {
 
 	usedPercent := int(virtualMemoryStat.UsedPercent)
 
-	ramCheckData := &data.RamCheckData{
+	ramCheckRespData := &data.RamCheckRespData{
 		StatusCode: http.StatusOK,
 
 		Status: "ErrorCodeOK",
 	}
 
 	if usedPercent >= 95 {
-		ramCheckData.StatusCode = http.StatusInternalServerError
-		ramCheckData.Status = "CRITICAL"
+		ramCheckRespData.StatusCode = http.StatusInternalServerError
+		ramCheckRespData.Status = "CRITICAL"
 	} else if usedPercent >= 90 {
-		ramCheckData.StatusCode = http.StatusTooManyRequests
-		ramCheckData.Status = "WARNING"
+		ramCheckRespData.StatusCode = http.StatusTooManyRequests
+		ramCheckRespData.Status = "WARNING"
 	}
 
-	ramCheckData.Detail = fmt.Sprintf("%s - Free space: %dMB (%dGB) / %dMB (%dGB) | Used: %d%%", ramCheckData.Status, usedMB, usedGB, totalMB, totalGB, usedPercent)
+	ramCheckRespData.Detail = fmt.Sprintf("%s - Free space: %dMB (%dGB) / %dMB (%dGB) | Used: %d%%", ramCheckRespData.Status, usedMB, usedGB, totalMB, totalGB, usedPercent)
 
-	return ramCheckData, nil
+	return ramCheckRespData, nil
 }

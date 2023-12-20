@@ -24,8 +24,7 @@
 		 c.Header("Access-Control-Max-Age", "172800")
  
 		 method := c.Request.Method
- 
-		 if method == "OPTIONS" {
+ 		 if method == "OPTIONS" {
 			 c.AbortWithStatus(http.StatusNoContent)
 		 }
  

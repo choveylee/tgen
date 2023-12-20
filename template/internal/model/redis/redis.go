@@ -45,7 +45,8 @@
 	 }
  
 	 serverPassword := tcfg.DefaultString(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_REDIS_PASSWORD")), "")
-	 serverPoolSize := tcfg.DefaultInt(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_REDIS_POOLSIZE")), 100)
+	 
+	 serverPoolSize := tcfg.DefaultInt(tcfg.LocalKey("SERVER_REDIS_POOLSIZE"), 100)
  
 	 serverClient, err = tdb.NewRedisClient(ctx, serverAddress, serverPassword, serverPoolSize)
 	 if err != nil {

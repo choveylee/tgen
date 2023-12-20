@@ -191,8 +191,8 @@ go mod tidy;
 )
 
 func main() {
-	domain := "dev.choveylee.top"
-	appName := "store-server"
+	domain := "dev.funplus.com"
+	appName := "glc-backend"
 
 	err := CopyDir("template", appName)
 	if err != nil {

@@ -33,9 +33,9 @@ func ErrMsg(errCode int) (string, bool) {
 var (
 	ErrorCodeOK = register(0, "")
 
-	ErrorCodeDbServerAbnormal   = register(100001, "database服务器异常")
-	ErrorCodeRedServerAbnormal  = register(100002, "redis服务器异常")
-	ErrorCodeHttpServerAbnormal = register(100003, "http服务器异常")
+	ErrorCodeMysqlServerAbnormal = register(100001, "mysql服务器异常")
+	ErrorCodeRedisServerAbnormal = register(100002, "redis服务器异常")
+	ErrorCodeHttpServerAbnormal  = register(100003, "http服务器异常")
 
 	ErrorCodeUnknownServerAbnormal = register(100011, "未知服务器异常")
 
@@ -53,7 +53,7 @@ func StatusCode(errCode int) int {
 	case ErrorCodeOK:
 		return http.StatusOK
 
-	case ErrorCodeDbServerAbnormal, ErrorCodeRedServerAbnormal, ErrorCodeHttpServerAbnormal:
+	case ErrorCodeMysqlServerAbnormal, ErrorCodeRedisServerAbnormal, ErrorCodeHttpServerAbnormal:
 		return http.StatusInternalServerError
 
 	case ErrorCodeUnknownServerAbnormal:

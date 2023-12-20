@@ -8,14 +8,14 @@
 
 package data
 
-type CpuCheckData struct {
+type CpuCheckRespData struct {
 	StatusCode int `json:"-"`
 
 	Status string `json:"Status"`
 	Detail string `json:"Detail"`
 }
 
-type RamCheckData struct {
+type RamCheckRespData struct {
 	StatusCode int `json:"-"`
 
 	Status string `json:"Status"`

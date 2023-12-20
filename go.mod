@@ -1,3 +1,3 @@
-module dev.choveylee.top/template-backend
+module dev.choveylee.top/tgen
 
 go 1.21.1

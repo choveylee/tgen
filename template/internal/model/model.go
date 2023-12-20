@@ -22,8 +22,7 @@
 	 errx := dbmodel.InitMysqlModel(ctx)
 	 if errx != nil {
 		 errMsg := tlog.E(ctx).Err(errx.Error()).Msgf("init model err (init mysql model %v).", errx.Error())
- 
-		 errx.AttachErrMsg(errMsg)
+ 		 errx.AttachErrMsg(errMsg)
  
 		 return errx
 	 }
@@ -31,8 +30,7 @@
 	 errx = redmodel.InitRedisModel(ctx)
 	 if errx != nil {
 		 errMsg := tlog.E(ctx).Err(errx.Error()).Msgf("init model err (init redis model %v).", errx.Error())
- 
-		 errx.AttachErrMsg(errMsg)
+ 		 errx.AttachErrMsg(errMsg)
  
 		 return errx
 	 }
