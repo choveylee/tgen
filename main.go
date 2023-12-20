@@ -181,7 +181,7 @@ func replaceContent(path string, domain, appName string) error {
 
 const (
 	exportScriptTemplate = `#!/bin/bash
-export GOPROXY=https://rainbow:WyH8nqyiH8huRhnsQjHa@proxy.rpkg.cc,direct;
+export GOPROXY=https://goproxy.cn,direct;
 export GOSUMDB=off;
 export CGO_ENABLED=0;
 cd %s;
