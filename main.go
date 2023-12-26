@@ -191,8 +191,8 @@ go mod tidy;
 )
 
 func main() {
-	domain := "dev.funplus.com"
-	appName := "glc-backend"
+	domain := "dev.lx-one.com"
+	appName := "lx-grto-server"
 
 	err := CopyDir("template", appName)
 	if err != nil {
