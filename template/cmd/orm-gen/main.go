@@ -10,14 +10,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/choveylee/tcfg"
 	"github.com/choveylee/tdb"
 	"github.com/choveylee/tlog"
 	"gorm.io/gen"
-
-	"{{domain}}/{{app_name}}/internal/const"
 )
 
 func main() {
@@ -25,21 +22,15 @@ func main() {
 
 	runMode := tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), "debug")
 
-	serverDsn, err := tcfg.String(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_MYSQL_DSN")))
+	serverDsn, err := tcfg.String(tcfg.LocalKey("SERVER_MYSQL_DSN"))
 	if err != nil {
-		tlog.E(ctx).Err(err).Msgf("main (%s::%s) err (cfg string %v).",
-			runMode, "SERVER_MYSQL_DSN", err)
+		tlog.E(ctx).Err(err).Msgf("main (%s) err (cfg string %v).",
+			"SERVER_MYSQL_DSN", err)
 
 		return
 	}
 
-	var serverClient *tdb.MysqlClient
-
-	if runMode == constant.RunModeDebug {
-		serverClient, err = tdb.NewMysqlClientWithLog(ctx, serverDsn)
-	} else {
-		serverClient, err = tdb.NewMysqlClient(ctx, serverDsn)
-	}
+	serverClient, err := tdb.NewMysqlClient(ctx, serverDsn)
 	if err != nil {
 		tlog.E(ctx).Err(err).Msgf("main (%s) err (new mysql client %v).",
 			serverDsn, err)
