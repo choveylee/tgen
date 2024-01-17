@@ -11,13 +11,13 @@ package data
 type CpuCheckRespData struct {
 	StatusCode int `json:"-"`
 
-	Status string `json:"Status"`
-	Detail string `json:"Detail"`
+	Status string `json:"status"`
+	Detail string `json:"detail"`
 }
 
 type RamCheckRespData struct {
 	StatusCode int `json:"-"`
 
-	Status string `json:"Status"`
-	Detail string `json:"Detail"`
+	Status string `json:"status"`
+	Detail string `json:"detail"`
 }
