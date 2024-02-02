@@ -28,5 +28,6 @@ RUN apk update \
 COPY --chown=0:0 --from=builder /app/{{app_name2}} /app/{{app_name2}}
 COPY --chown=0:0 --from=builder /app/cmd/{{app_name2}}_config.ini /app/{{app_name2}}_config.ini
 COPY --chown=0:0 --from=builder /app/migration /app/migration
+COPY --chown=0:0 --from=builder /app/config /app/config
 
 CMD ["/app/{{app_name2}}"]
