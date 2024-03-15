@@ -6,22 +6,22 @@
  * @Date: 2023/11/15 21:49
  */
 
- package service
+package service
 
- import (
-	 "context"
+import (
+    "context"
  
-	 "github.com/choveylee/tcfg"
-	 "github.com/choveylee/terror"
- )
+	"github.com/choveylee/tcfg"
+	"github.com/choveylee/terror"
+)
  
- var (
-	 runMode string
- )
+var (
+	runMode string
+)
  
- func InitService(ctx context.Context) *terror.Terror {
-	 runMode = tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), "debug")
+func InitService(ctx context.Context) *terror.Terror {
+	runMode = tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), "debug")
  
-	 return nil
- }
+	return nil
+}
  

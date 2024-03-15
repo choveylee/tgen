@@ -6,35 +6,35 @@
  * @Date: 2023/11/15 18:10
  */
 
- package model
+package model
 
- import (
-	 "context"
+import (
+	"context"
  
-	 "github.com/choveylee/terror"
-	 "github.com/choveylee/tlog"
+	"github.com/choveylee/terror"
+	"github.com/choveylee/tlog"
  
-	 "{{domain}}/{{app_name}}/internal/model/mysql"
-	 "{{domain}}/{{app_name}}/internal/model/redis"
- )
+	"{{domain}}/{{app_name}}/internal/model/mysql"
+	"{{domain}}/{{app_name}}/internal/model/redis"
+)
  
- func InitModel(ctx context.Context) *terror.Terror {
-	 errx := dbmodel.InitMysqlModel(ctx)
-	 if errx != nil {
-		 errMsg := tlog.E(ctx).Err(errx.Error()).Msgf("init model err (init mysql model %v).", errx.Error())
- 		 errx.AttachErrMsg(errMsg)
+func InitModel(ctx context.Context) *terror.Terror {
+	errx := dbmodel.InitMysqlModel(ctx)
+	if errx != nil {
+		errMsg := tlog.E(ctx).Err(errx.Error()).Msgf("init model err (init mysql model %v).", errx.Error())
+ 		errx.AttachErrMsg(errMsg)
  
-		 return errx
-	 }
+		return errx
+	}
  
-	 errx = redmodel.InitRedisModel(ctx)
-	 if errx != nil {
-		 errMsg := tlog.E(ctx).Err(errx.Error()).Msgf("init model err (init redis model %v).", errx.Error())
- 		 errx.AttachErrMsg(errMsg)
+	errx = redmodel.InitRedisModel(ctx)
+	if errx != nil {
+		errMsg := tlog.E(ctx).Err(errx.Error()).Msgf("init model err (init redis model %v).", errx.Error())
+ 		errx.AttachErrMsg(errMsg)
  
-		 return errx
-	 }
+		return errx
+	}
  
-	 return nil
- }
+	return nil
+}
  

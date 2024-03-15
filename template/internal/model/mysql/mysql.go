@@ -8,77 +8,78 @@
 
  package dbmodel
 
- import (
-	 "context"
-	 "fmt"
+import (
+    "context"
+    "fmt"
  
-	 "github.com/choveylee/tcfg"
-	 "github.com/choveylee/tdb"
-	 "github.com/choveylee/terror"
-	 "github.com/choveylee/tlog"
-	 _ "github.com/golang-migrate/migrate/v4/database/mysql"
-	 _ "github.com/golang-migrate/migrate/v4/source/file"
+    "github.com/choveylee/tcfg"
+    "github.com/choveylee/tdb"
+	"github.com/choveylee/terror"
+	"github.com/choveylee/tlog"
+	_ "github.com/golang-migrate/migrate/v4/database/mysql"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
  
-	 "{{domain}}/{{app_name}}/internal/const"
- )
+	"{{domain}}/{{app_name}}/internal/const"
+)
  
- var (
-	 runMode string
+var (
+    runMode string
  
-	 serverClient *tdb.MysqlClient
- )
+	serverClient *tdb.MysqlClient
+)
  
- func InitMysqlModel(ctx context.Context) *terror.Terror {
-	 runMode = tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), constant.RunModeRelease)
+func InitMysqlModel(ctx context.Context) *terror.Terror {
+	runMode = tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), constant.RunModeRelease)
  
-	 serverDsn, err := tcfg.String(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_MYSQL_DSN")))
-	 if err != nil {
-		 errMsg := tlog.E(ctx).Err(err).Msgf("init mysql model (%s::%s) err (cfg string %v).",
-			 runMode, "SERVER_MYSQL_DSN", err)
+	serverDsn := tcfg.DefaultString(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_MYSQL_DSN")), "")
+	if serverDsn == "" {
+	    errMsg := tlog.E(ctx).Msgf("init mysql model err (server mysql dsn illegal).")
  
-		 errx := terror.NewRawTerror(ctx, err, errMsg)
+		errx := terror.NewRawTerror(ctx, terror.ErrConfIllegal("server mysql dsn"), errMsg)
  
-		 return errx
-	 }
+		return errx
+	}
+
+    var err error
+
+	if runMode == constant.RunModeDebug {
+	    serverClient, err = tdb.NewMysqlClientWithLog(ctx, serverDsn)
+	} else {
+		serverClient, err = tdb.NewMysqlClient(ctx, serverDsn)
+	}
+	if err != nil {
+		errMsg := tlog.E(ctx).Err(err).Msgf("init mysql model (%s) err (new mysql client %v).",
+			serverDsn, err)
  
-	 if runMode == constant.RunModeDebug {
-		 serverClient, err = tdb.NewMysqlClientWithLog(ctx, serverDsn)
-	 } else {
-		 serverClient, err = tdb.NewMysqlClient(ctx, serverDsn)
-	 }
-	 if err != nil {
-		 errMsg := tlog.E(ctx).Err(err).Msgf("init mysql model (%s) err (new mysql client %v).",
-			 serverDsn, err)
+		errx := terror.NewRawTerror(ctx, err, errMsg)
  
-		 errx := terror.NewRawTerror(ctx, err, errMsg)
+		return errx
+	}
  
-		 return errx
-	 }
+	maxIdleConns := tcfg.DefaultInt(tcfg.LocalKey("MYSQL_MAX_IDLE_CONNS"), 10)
  
-	 maxIdleConns := tcfg.DefaultInt(tcfg.LocalKey("MYSQL_MAX_IDLE_CONNS"), 10)
+	err = serverClient.SetMaxIdleConns(maxIdleConns)
+	if err != nil {
+		errMsg := tlog.E(ctx).Err(err).Msgf("init mysql model (%d) err (set max idle conns %v).",
+		    maxIdleConns, err)
+
+		errx := terror.NewRawTerror(ctx, err, errMsg)
  
-	 err = serverClient.SetMaxIdleConns(maxIdleConns)
-	 if err != nil {
-		 errMsg := tlog.E(ctx).Err(err).Msgf("init mysql model (%d) err (set max idle conns %v).",
-			 maxIdleConns, err)
+		return errx
+	}
  
-		 errx := terror.NewRawTerror(ctx, err, errMsg)
+	maxOpenConns := tcfg.DefaultInt(tcfg.LocalKey("MYSQL_MAX_OPEN_CONNS"), 100)
  
-		 return errx
-	 }
+	err = serverClient.SetMaxOpenConns(maxOpenConns)
+	if err != nil {
+		errMsg := tlog.E(ctx).Err(err).Msgf("init mysql model (%d) err (set max open conns %v).",
+			maxOpenConns, err)
  
-	 maxOpenConns := tcfg.DefaultInt(tcfg.LocalKey("MYSQL_MAX_OPEN_CONNS"), 100)
+		errx := terror.NewRawTerror(ctx, err, errMsg)
  
-	 err = serverClient.SetMaxOpenConns(maxOpenConns)
-	 if err != nil {
-		 errMsg := tlog.E(ctx).Err(err).Msgf("init mysql model (%d) err (set max open conns %v).",
-			 maxOpenConns, err)
+		return errx
+	}
  
-		 errx := terror.NewRawTerror(ctx, err, errMsg)
- 
-		 return errx
-	 }
- 
-	 return nil
- }
+	return nil
+}
  
