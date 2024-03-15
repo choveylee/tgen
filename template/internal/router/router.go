@@ -15,8 +15,6 @@ import (
 	"github.com/choveylee/tserver"
 	"github.com/choveylee/tserver/middleware"
 	"github.com/gin-gonic/gin"
- 
-	"{{domain}}/{{app_name}}/internal/router/middleware"
 )
  
 func NewRouter(ctx context.Context) *gin.Engine {
