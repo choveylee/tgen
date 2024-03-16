@@ -29,8 +29,6 @@ func HandleCpuCheck(c *gin.Context) {
 	}
 
 	SendPassResponse(c, cpuCheckRespData)
-
-	return
 }
 
 func HandleRamCheck(c *gin.Context) {
@@ -47,6 +45,4 @@ func HandleRamCheck(c *gin.Context) {
 	}
 
 	SendPassResponse(c, ramCheckRespData)
-
-	return
 }
