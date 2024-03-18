@@ -82,4 +82,7 @@ func InitMysqlModel(ctx context.Context) *terror.Terror {
  
 	return nil
 }
- 
+
+func Tx(ctx context.Context) *gorm.DB {
+	return serverClient.Tx(ctx, runMode)
+}
