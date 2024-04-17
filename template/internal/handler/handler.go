@@ -38,6 +38,17 @@ func SendPassResponse(c *gin.Context, respData interface{}) {
 	})
 }
 
+func SendPassResponseEx(c *gin.Context, respData interface{}, exData interface{}) {
+    statusCode := constant.StatusCode(constant.ErrorCodeOK)
+
+    c.JSON(statusCode, data.Response{
+        Code: constant.ErrorCodeOK,
+
+        Data:   respData,
+        ExData: exData,
+    })
+}
+
 func SendRawJsonResponse(c *gin.Context, respData interface{}) {
 	c.JSON(http.StatusOK, respData)
 }

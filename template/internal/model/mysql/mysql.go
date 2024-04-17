@@ -18,6 +18,7 @@ import (
 	"github.com/choveylee/tlog"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"gorm.io/gorm"
  
 	"{{domain}}/{{app_name}}/internal/const"
 )

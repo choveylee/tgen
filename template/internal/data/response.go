@@ -17,7 +17,8 @@ type Response struct {
 	Message string `json:"message,omitempty"`
 	Detail  string `json:"detail,omitempty"`
 
-	Data interface{} `json:"data,omitempty"`
+	Data   interface{} `json:"data,omitempty"`
+	ExData interface{} `json:"ex_data,omitempty"`
 }
 
 func MarshalData(data interface{}) string {
