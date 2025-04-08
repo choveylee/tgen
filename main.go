@@ -187,6 +187,7 @@ export CGO_ENABLED=0;
 cd %s;
 go mod init %s/%s;
 go mod tidy;
+go get go@1.23
 `
 )
 
