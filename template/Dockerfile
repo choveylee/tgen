@@ -1,4 +1,4 @@
-FROM golang:1.21.5 as builder
+FROM golang:1.23.12 AS builder
 
 ENV GOOS=linux \
     GOARCH=amd64 \
@@ -16,7 +16,7 @@ COPY . .
 
 RUN go build -o ./{{app_name2}} ./cmd
 
-FROM alpine:3.19.0
+FROM alpine:3.19.8
 
 WORKDIR /app
 
