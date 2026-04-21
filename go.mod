@@ -1,3 +1,3 @@
 module dev.choveylee.top/tgen
 
-go 1.21.1
+go 1.25.0
