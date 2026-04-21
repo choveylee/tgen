@@ -9,12 +9,11 @@
 package middleware
 
 import (
-    "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
 )
 
 func AuthMiddleware() gin.HandlerFunc {
-    return func(c *gin.Context) {
-	    c.Next()
- 	}
+	return func(c *gin.Context) {
+		c.Next()
+	}
 }
- 

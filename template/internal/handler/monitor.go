@@ -12,6 +12,8 @@ import (
 	"github.com/choveylee/tlog"
 	"github.com/gin-gonic/gin"
 
+	"{{domain}}/{{app_name}}/internal/const"
+	"{{domain}}/{{app_name}}/internal/data"
 	"{{domain}}/{{app_name}}/internal/service"
 )
 
@@ -20,15 +22,16 @@ func HandleCpuCheck(c *gin.Context) {
 
 	cpuCheckRespData, errx := service.CpuCheck(ctx)
 	if errx != nil {
-		errMsg := tlog.E(ctx).Err(errx.Error()).Msgf("handle cpu check err (cpu check %v).",
-			errx.Error())
-
-		SendFailResponse(c, errx.ErrCode(), errMsg)
+		tlog.E(ctx).Err(errx).Msgf("handle cpu check err (cpu check %s).", errx)
+		SendFailResponse(c, errx.ErrCode(), errx.Error())
 
 		return
 	}
 
-	SendPassResponse(c, cpuCheckRespData)
+	c.JSON(cpuCheckRespData.StatusCode, data.Response{
+		Code: constant.ErrorCodeOK,
+		Data: cpuCheckRespData,
+	})
 }
 
 func HandleRamCheck(c *gin.Context) {
@@ -36,13 +39,14 @@ func HandleRamCheck(c *gin.Context) {
 
 	ramCheckRespData, errx := service.RamCheck(ctx)
 	if errx != nil {
-		errMsg := tlog.E(ctx).Err(errx.Error()).Msgf("handle ram check err (ram check %v).",
-			errx.Error())
-
-		SendFailResponse(c, errx.ErrCode(), errMsg)
+		tlog.E(ctx).Err(errx).Msgf("handle ram check err (ram check %s).", errx)
+		SendFailResponse(c, errx.ErrCode(), errx.Error())
 
 		return
 	}
 
-	SendPassResponse(c, ramCheckRespData)
+	c.JSON(ramCheckRespData.StatusCode, data.Response{
+		Code: constant.ErrorCodeOK,
+		Data: ramCheckRespData,
+	})
 }

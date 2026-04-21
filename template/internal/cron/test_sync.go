@@ -12,6 +12,6 @@ import (
 	"context"
 )
 
-func runTestSync(ctx context.Context, params ...interface{}) error {
+func runTestSync(ctx context.Context, params ...any) error {
 	return nil
 }

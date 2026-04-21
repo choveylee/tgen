@@ -21,7 +21,7 @@ func init() {
 
 	timeLocation, err := tcfg.String(tcfg.LocalKey("TIME_LOCATION"))
 	if err != nil {
-		tlog.E(ctx).Err(err).Msgf("init (%s) err (cfg string %v).",
+		tlog.E(ctx).Err(err).Msgf("init (%s) err (cfg string %s).",
 			"TIME_LOCATION", err)
 
 		return
@@ -29,7 +29,7 @@ func init() {
 
 	location, err := time.LoadLocation(timeLocation)
 	if err != nil {
-		tlog.E(ctx).Err(err).Msgf("init (%s) err (load location %v).",
+		tlog.E(ctx).Err(err).Msgf("init (%s) err (load location %s).",
 			timeLocation, err)
 
 		return

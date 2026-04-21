@@ -6,14 +6,14 @@
  * @Date: 2023/11/15 21:49
  */
 
- package lib
+package lib
 
- import (
-	 "context"
- 
-	 "github.com/choveylee/terror"
- )
- 
- func InitLib(ctx context.Context) *terror.Terror {
+import (
+	"context"
+
+	"github.com/choveylee/terror"
+)
+
+func InitLib(ctx context.Context) *terror.Terror {
 	return nil
- }
+}

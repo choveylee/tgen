@@ -15,57 +15,23 @@ func copyFile(srcPath, destPath string) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
-
 	defer srcFile.Close()
+
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return -1, err
+	}
 
 	dstFile, err := os.Create(destPath)
 	if err != nil {
 		return -1, err
 	}
-
 	defer dstFile.Close()
 
 	return io.Copy(dstFile, srcFile)
 }
 
-func mkDir(destDir string) error {
-	_, err := os.Stat(destDir)
-	if err == nil {
-		return nil
-	}
-
-	if os.IsNotExist(err) {
-		err := os.Mkdir(destDir, os.ModePerm)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	return nil
-}
-
-func copyDir(srcDir string, destDir string) error {
-	srcInfo, err := os.Stat(srcDir)
-	if err != nil {
-		return err
-	}
-
-	if !srcInfo.IsDir() {
-		return errors.New("src dir type illegal")
-	}
-
-	destInfo, err := os.Stat(destDir)
-	if err != nil {
-		return err
-	}
-
-	if !destInfo.IsDir() {
-		return errors.New("des dir type illegal")
-	}
-
-	srcDir, err = filepath.Abs(srcDir)
+func copyTree(srcDir, destDir string) error {
+	srcDir, err := filepath.Abs(srcDir)
 	if err != nil {
 		return err
 	}
@@ -75,108 +41,82 @@ func copyDir(srcDir string, destDir string) error {
 		return err
 	}
 
-	err = filepath.Walk(srcDir, func(path string, fileInfo os.FileInfo, err error) error {
-		if fileInfo == nil {
-			return nil
-		}
+	srcInfo, err := os.Stat(srcDir)
+	if err != nil {
+		return err
+	}
+	if !srcInfo.IsDir() {
+		return errors.New("src dir type illegal")
+	}
 
-		relPath, err := filepath.Rel(srcDir, path)
+	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if relPath == "." {
+		rel, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return err
+		}
+
+		if rel == "." {
 			return nil
 		}
 
-		destPath := filepath.Join(destDir, relPath)
-
-		if fileInfo.IsDir() {
-			err := mkDir(destPath)
-			if err != nil {
-				return err
-			}
-
-			err = copyDir(path, destPath)
-			if err != nil {
-				return err
-			}
-		} else {
-			_, err := copyFile(path, destPath)
-			if err != nil {
-				return err
-			}
+		destPath := filepath.Join(destDir, rel)
+		if info.IsDir() {
+			return os.MkdirAll(destPath, 0o755)
 		}
 
-		return nil
-	})
-	if err != nil {
+		_, err = copyFile(path, destPath)
 		return err
-	}
-
-	return nil
+	})
 }
 
 func CopyDir(srcDir string, destDir string) error {
-	_, err := os.Stat(destDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			err := os.Mkdir(destDir, os.ModePerm)
-			if err != nil {
-				return err
-			}
-		}
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return err
 	}
 
-	return copyDir(srcDir, destDir)
+	return copyTree(srcDir, destDir)
 }
 
 func replaceContent(path string, domain, appName string) error {
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND, 0666)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
-	content, err := io.ReadAll(file)
-	if err != nil {
-		return err
-	}
-
-	strContent := string(content)
-
+	strContent := string(data)
 	strContent = strings.ReplaceAll(strContent, "{{domain}}", domain)
 	strContent = strings.ReplaceAll(strContent, "{{app_name}}", appName)
 	strContent = strings.ReplaceAll(strContent, "{{app_name2}}", strings.ReplaceAll(appName, "-", "_"))
 	strContent = strings.ReplaceAll(strContent, "{{APP_NAME}}", strings.ToUpper(strings.ReplaceAll(appName, "-", "_")))
 
-	err = file.Close()
-	if err != nil {
-		return err
-	}
-
-	fileName := filepath.Base(path)
-	if fileName == "template_config.ini" {
-		err := os.Remove(path)
-		if err != nil {
+	outPath := path
+	if filepath.Base(path) == "template_config.ini" {
+		if err := os.Remove(path); err != nil {
 			return err
 		}
-
-		path = filepath.Join(filepath.Dir(path), fmt.Sprintf("%s_config.ini", strings.ReplaceAll(appName, "-", "_")))
+		outPath = filepath.Join(filepath.Dir(path), fmt.Sprintf("%s_config.ini", strings.ReplaceAll(appName, "-", "_")))
 	}
 
-	file, err = os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		return err
+	return os.WriteFile(outPath, []byte(strContent), 0o666)
+}
+
+// shouldApplyPlaceholders 仅对可能包含 {{...}} 的文本源文件做替换，避免误处理二进制等文件。
+func shouldApplyPlaceholders(path string) bool {
+	base := filepath.Base(path)
+	if base == "Dockerfile" {
+		return true
 	}
 
-	defer file.Close()
-
-	_, err = file.WriteString(strContent)
-	if err != nil {
-		return err
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".go", ".sql", ".sh", ".ini":
+		return true
+	default:
+		return false
 	}
-
-	return nil
 }
 
 const (
@@ -187,7 +127,7 @@ export CGO_ENABLED=0;
 cd %s;
 go mod init %s/%s;
 go mod tidy;
-go get go@1.23
+go get go@1.25.0
 `
 )
 
@@ -201,25 +141,21 @@ func main() {
 	}
 
 	err = filepath.Walk(appName, func(path string, fileInfo os.FileInfo, err error) error {
-		if fileInfo == nil {
+		if err != nil {
 			return err
 		}
-
-		if fileInfo.IsDir() {
+		if fileInfo == nil || fileInfo.IsDir() {
 			return nil
-		} else {
-			if !strings.HasSuffix(path, ".go") && strings.HasSuffix(path, ".int") {
-				return nil
-			}
-
-			err := replaceContent(path, domain, appName)
-			if err != nil {
-				return err
-			}
+		}
+		if !shouldApplyPlaceholders(path) {
+			return nil
 		}
 
-		return nil
+		return replaceContent(path, domain, appName)
 	})
+	if err != nil {
+		panic(err)
+	}
 
 	exportScript := fmt.Sprintf(exportScriptTemplate, appName, domain, appName)
 

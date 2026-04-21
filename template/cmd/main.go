@@ -13,7 +13,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/choveylee/tcfg"
@@ -27,6 +31,9 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
+	_ "{{domain}}/{{app_name}}/cmd/init"
+
+	"{{domain}}/{{app_name}}/internal/const"
 	"{{domain}}/{{app_name}}/internal/cron"
 	"{{domain}}/{{app_name}}/internal/lib"
 	"{{domain}}/{{app_name}}/internal/model"
@@ -40,8 +47,8 @@ func main() {
 	// init migrations
 	errx := runMigrate(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx.Error()).Msgf("main err (run migrate %v).",
-			errx.Error())
+		tlog.E(ctx).Err(errx).Msgf("main err (run migrate %s).",
+			errx)
 
 		return
 	}
@@ -49,8 +56,8 @@ func main() {
 	// init lib
 	errx = lib.InitLib(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx.Error()).Msgf("main err (init lib %v).",
-			errx.Error())
+		tlog.E(ctx).Err(errx).Msgf("main err (init lib %s).",
+			errx)
 
 		return
 	}
@@ -58,8 +65,8 @@ func main() {
 	// init model
 	errx = model.InitModel(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx.Error()).Msgf("main err (init model %v).",
-			errx.Error())
+		tlog.E(ctx).Err(errx).Msgf("main err (init model %s).",
+			errx)
 
 		return
 	}
@@ -67,16 +74,16 @@ func main() {
 	// init cron
 	errx = crontab.InitCron(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx.Error()).Msgf("main err (init cron %v).",
-			errx.Error())
+		tlog.E(ctx).Err(errx).Msgf("main err (init cron %s).",
+			errx)
 
 		return
 	}
 
 	errx = crontab.StartCron(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx.Error()).Msgf("main err (start cron %v).",
-			errx.Error())
+		tlog.E(ctx).Err(errx).Msgf("main err (start cron %s).",
+			errx)
 
 		return
 	}
@@ -84,34 +91,38 @@ func main() {
 	// init service
 	errx = service.InitService(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx.Error()).Msgf("main err (init service %v).",
-			errx.Error())
+		tlog.E(ctx).Err(errx).Msgf("main err (init service %s).",
+			errx)
 
 		return
 	}
 
-	// start ping server
+	httpPort := tcfg.DefaultInt(tcfg.LocalKey("HTTP_PORT"), 8080)
+
 	go func() {
-		errx := pingServer(ctx)
+		if err := waitForTCPDial(ctx, httpPort, 30*time.Second); err != nil {
+			tlog.W(ctx).Msg("http server tcp not ready within timeout, skip health ping.")
+
+			return
+		}
+
+		errx := pingServer(ctx, httpPort)
 		if errx != nil {
-			tlog.W(ctx).Msg("http server not ready, may took too long to start up.")
+			tlog.W(ctx).Msg("http server health check failed after tcp ready.")
 		} else {
 			tlog.I(ctx).Msg("http server deployed success.")
 		}
 	}()
 
-	// init http server
-	httpPort := tcfg.DefaultInt(tcfg.LocalKey("HTTP_PORT"), 80)
-
 	tserver.StartHttpServer(ctx, router.NewRouter(ctx), httpPort)
 }
 
 func runMigrate(ctx context.Context) *terror.Terror {
-	runMode := tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), "debug")
+	runMode := tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), constant.RunModeDebug)
 
 	serverDsn, err := tcfg.String(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_MYSQL_DSN")))
 	if err != nil {
-		errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s::%s) err (cfg string %v).",
+		errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s::%s) err (cfg string %s).",
 			runMode, "SERVER_MYSQL_DSN", err)
 
 		errx := terror.NewRawTerror(ctx, err, errMsg)
@@ -119,11 +130,11 @@ func runMigrate(ctx context.Context) *terror.Terror {
 		return errx
 	}
 
-	client, err := migrate.New("file://migration", "mysql://"+tutil.DsnEncode(serverDsn))
+	client, err := migrate.New("file://migration", "mysql://"+tutil.MysqlDsnEncode(serverDsn))
 	if err != nil {
 		serverCfg, err := mysql.ParseDSN(serverDsn)
 		if err != nil {
-			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s) err (parse dsn %v).",
+			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s) err (parse dsn %s).",
 				serverDsn, err)
 
 			errx := terror.NewRawTerror(ctx, err, errMsg)
@@ -138,7 +149,7 @@ func runMigrate(ctx context.Context) *terror.Terror {
 
 		db, err := sql.Open("mysql", tmpDsn)
 		if err != nil {
-			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s, %s) err (open mysql %v).",
+			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s, %s) err (open mysql %s).",
 				serverDsn, tmpDsn, err)
 
 			errx := terror.NewRawTerror(ctx, err, errMsg)
@@ -150,7 +161,7 @@ func runMigrate(ctx context.Context) *terror.Terror {
 
 		_, err = db.Exec("CREATE DATABASE IF NOT EXISTS " + "`" + dbName + "` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci")
 		if err != nil {
-			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s, %s, %s) err (create database %v).",
+			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s, %s, %s) err (create database %s).",
 				serverDsn, tmpDsn, dbName, err)
 
 			errx := terror.NewRawTerror(ctx, err, errMsg)
@@ -158,9 +169,9 @@ func runMigrate(ctx context.Context) *terror.Terror {
 			return errx
 		}
 
-		client, err = migrate.New("file://migration", "mysql://"+tutil.DsnEncode(serverDsn))
+		client, err = migrate.New("file://migration", "mysql://"+tutil.MysqlDsnEncode(serverDsn))
 		if err != nil {
-			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s) err (migrate new %v).",
+			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s) err (migrate new %s).",
 				serverDsn, err)
 
 			errx := terror.NewRawTerror(ctx, err, errMsg)
@@ -169,9 +180,16 @@ func runMigrate(ctx context.Context) *terror.Terror {
 		}
 	}
 
+	defer func() {
+		srcErr, dbErr := client.Close()
+		if srcErr != nil || dbErr != nil {
+			tlog.W(ctx).Msgf("run migrate close err (source %s, database %s).", srcErr, dbErr)
+		}
+	}()
+
 	err = client.Up()
 	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s) err (migrate up %v).",
+		errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s) err (migrate up %s).",
 			serverDsn, err)
 
 		errx := terror.NewRawTerror(ctx, err, errMsg)
@@ -182,17 +200,67 @@ func runMigrate(ctx context.Context) *terror.Terror {
 	return nil
 }
 
-func pingServer(ctx context.Context) *terror.Terror {
+func waitForTCPDial(ctx context.Context, port int, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	d := net.Dialer{Timeout: 150 * time.Millisecond}
+
+	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		conn, err := d.DialContext(ctx, "tcp", addr)
+		if err == nil {
+			_ = conn.Close()
+
+			return nil
+		}
+
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	return fmt.Errorf("timeout waiting for tcp %s", addr)
+}
+
+// resolvePingBaseURL 与 HTTP 监听端口对齐：配置为空或为本机回环时，统一使用 httpPort，避免只改 HTTP_PORT 未改 SERVER_PING_HOST。
+func resolvePingBaseURL(httpPort int) string {
+	raw := strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey("SERVER_PING_HOST"), ""))
+	if raw == "" {
+		return fmt.Sprintf("http://127.0.0.1:%d", httpPort)
+	}
+
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Sprintf("http://127.0.0.1:%d", httpPort)
+	}
+
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
+
+	switch u.Hostname() {
+	case "127.0.0.1", "localhost", "::1":
+		u.Host = net.JoinHostPort(u.Hostname(), strconv.Itoa(httpPort))
+	}
+
+	return strings.TrimSuffix(u.String(), "/")
+}
+
+func pingServer(ctx context.Context, httpPort int) *terror.Terror {
 	pingCount := tcfg.DefaultInt(tcfg.LocalKey("SERVER_PING_COUNT"), 3)
-	pingHost := tcfg.DefaultString(tcfg.LocalKey("SERVER_PING_HOST"), "http://127.0.0.1")
+
+	baseURL := resolvePingBaseURL(httpPort)
+	pingURL := baseURL + "/healthz"
 
 	for i := 0; i < pingCount; i++ {
-		time.Sleep(time.Second)
+		if i > 0 {
+			time.Sleep(time.Second)
+		}
 
-		pingUrl := fmt.Sprintf("%s%s", pingHost, "/healthz")
-
-		// ping the server by sending a GET request to `/healthz`.
-		response, err := thttp.Get(ctx, pingUrl, nil, nil)
+		response, err := thttp.Get(ctx, pingURL, nil, nil)
 		if err != nil {
 			continue
 		}

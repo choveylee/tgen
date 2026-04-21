@@ -9,19 +9,19 @@
 package router
 
 import (
-    "context"
- 
+	"context"
+
 	"github.com/choveylee/tcfg"
 	"github.com/choveylee/tserver"
-	"github.com/choveylee/tserver/middleware"
+	tmiddleware "github.com/choveylee/tserver/middleware"
 	"github.com/gin-gonic/gin"
 )
- 
+
 func NewRouter(ctx context.Context) *gin.Engine {
 	appName := tcfg.DefaultString("APP_NAME", "unknown")
- 
+
 	router := tserver.NewRouter(appName)
- 
+
 	router.Use(tmiddleware.CorsMiddleware())
 
 	// register monitor

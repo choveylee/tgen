@@ -1,2 +1,5 @@
 .DS_Store
 .idea/MarsCodeWorkspaceAppSettings.xml
+test-backend/.idea/workspace.xml
+tgen
+.idea/go.imports.xml

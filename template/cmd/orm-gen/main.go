@@ -15,16 +15,18 @@ import (
 	"github.com/choveylee/tdb"
 	"github.com/choveylee/tlog"
 	"gorm.io/gen"
+
+	"{{domain}}/{{app_name}}/internal/const"
 )
 
 func main() {
 	ctx := context.Background()
 
-	runMode := tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), "debug")
+	runMode := tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), constant.RunModeDebug)
 
 	serverDsn, err := tcfg.String(tcfg.LocalKey("SERVER_MYSQL_DSN"))
 	if err != nil {
-		tlog.E(ctx).Err(err).Msgf("main (%s) err (cfg string %v).",
+		tlog.E(ctx).Err(err).Msgf("main (%s) err (cfg string %s).",
 			"SERVER_MYSQL_DSN", err)
 
 		return
@@ -32,7 +34,7 @@ func main() {
 
 	serverClient, err := tdb.NewMysqlClient(ctx, serverDsn)
 	if err != nil {
-		tlog.E(ctx).Err(err).Msgf("main (%s) err (new mysql client %v).",
+		tlog.E(ctx).Err(err).Msgf("main (%s) err (new mysql client %s).",
 			serverDsn, err)
 
 		return

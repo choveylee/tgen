@@ -9,12 +9,11 @@
 package service
 
 import (
-    "context"
- 
+	"context"
+
 	"github.com/choveylee/terror"
 )
 
 func InitService(ctx context.Context) *terror.Terror {
 	return nil
 }
- 
