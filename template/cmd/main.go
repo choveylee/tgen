@@ -100,7 +100,7 @@ func main() {
 	httpPort := tcfg.DefaultInt(tcfg.LocalKey("HTTP_PORT"), 8080)
 
 	go func() {
-		if err := waitForTCPDial(ctx, httpPort, 30*time.Second); err != nil {
+		if err := waitForTcpDial(ctx, httpPort, 30*time.Second); err != nil {
 			tlog.W(ctx).Msg("http server tcp not ready within timeout, skip health ping.")
 
 			return
@@ -200,10 +200,12 @@ func runMigrate(ctx context.Context) *terror.Terror {
 	return nil
 }
 
-func waitForTCPDial(ctx context.Context, port int, timeout time.Duration) error {
+func waitForTcpDial(ctx context.Context, port int, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	d := net.Dialer{Timeout: 150 * time.Millisecond}
+
+	address := fmt.Sprintf("127.0.0.1:%d", port)
+
+	dialer := net.Dialer{Timeout: 150 * time.Millisecond}
 
 	for time.Now().Before(deadline) {
 		select {
@@ -212,7 +214,7 @@ func waitForTCPDial(ctx context.Context, port int, timeout time.Duration) error 
 		default:
 		}
 
-		conn, err := d.DialContext(ctx, "tcp", addr)
+		conn, err := dialer.DialContext(ctx, "tcp", address)
 		if err == nil {
 			_ = conn.Close()
 
@@ -222,45 +224,45 @@ func waitForTCPDial(ctx context.Context, port int, timeout time.Duration) error 
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	return fmt.Errorf("timeout waiting for tcp %s", addr)
+	return fmt.Errorf("timeout waiting for tcp %s", address)
 }
 
-// resolvePingBaseURL 与 HTTP 监听端口对齐：配置为空或为本机回环时，统一使用 httpPort，避免只改 HTTP_PORT 未改 SERVER_PING_HOST。
-func resolvePingBaseURL(httpPort int) string {
-	raw := strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey("SERVER_PING_HOST"), ""))
-	if raw == "" {
+// resolvePingBaseUrl 与 HTTP 监听端口对齐：配置为空或为本机回环时，统一使用 httpPort，避免只改 HTTP_PORT 未改 SERVER_PING_HOST。
+func resolvePingBaseUrl(httpPort int) string {
+	serverPingHost := strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey("SERVER_PING_HOST"), ""))
+	if serverPingHost == "" {
 		return fmt.Sprintf("http://127.0.0.1:%d", httpPort)
 	}
 
-	u, err := url.Parse(raw)
+	parsedUrl, err := url.Parse(serverPingHost)
 	if err != nil {
 		return fmt.Sprintf("http://127.0.0.1:%d", httpPort)
 	}
 
-	if u.Scheme == "" {
-		u.Scheme = "http"
+	if parsedUrl.Scheme == "" {
+		parsedUrl.Scheme = "http"
 	}
 
-	switch u.Hostname() {
+	switch parsedUrl.Hostname() {
 	case "127.0.0.1", "localhost", "::1":
-		u.Host = net.JoinHostPort(u.Hostname(), strconv.Itoa(httpPort))
+		parsedUrl.Host = net.JoinHostPort(parsedUrl.Hostname(), strconv.Itoa(httpPort))
 	}
 
-	return strings.TrimSuffix(u.String(), "/")
+	return strings.TrimSuffix(parsedUrl.String(), "/")
 }
 
 func pingServer(ctx context.Context, httpPort int) *terror.Terror {
 	pingCount := tcfg.DefaultInt(tcfg.LocalKey("SERVER_PING_COUNT"), 3)
 
-	baseURL := resolvePingBaseURL(httpPort)
-	pingURL := baseURL + "/healthz"
+	baseUrl := resolvePingBaseUrl(httpPort)
+	pingUrl := baseUrl + "/healthz"
 
 	for i := 0; i < pingCount; i++ {
 		if i > 0 {
 			time.Sleep(time.Second)
 		}
 
-		response, err := thttp.Get(ctx, pingURL, nil, nil)
+		response, err := thttp.Get(ctx, pingUrl, nil, nil)
 		if err != nil {
 			continue
 		}

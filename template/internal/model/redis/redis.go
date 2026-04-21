@@ -17,6 +17,7 @@ import (
 	"github.com/choveylee/terror"
 	"github.com/choveylee/tlog"
 	"github.com/redis/go-redis/v9"
+
 	"{{domain}}/{{app_name}}/internal/const"
 )
 

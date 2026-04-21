@@ -67,8 +67,7 @@ func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 		cpuCheckRespData.Status = "WARNING"
 	}
 
-	cpuCheckRespData.Detail = fmt.Sprintf(
-		"%s - Load average: %.2f, %.2f, %.2f | Load/core: %.2f | Cores: %d",
+	cpuCheckRespData.Detail = fmt.Sprintf("%s - Load average: %.2f, %.2f, %.2f | Load/core: %.2f | Cores: %d",
 		cpuCheckRespData.Status, load1, load5, load15, loadPerCore, cores,
 	)
 
@@ -105,7 +104,8 @@ func RamCheck(ctx context.Context) (*data.RamCheckRespData, *terror.Terror) {
 		ramCheckRespData.Status = "WARNING"
 	}
 
-	ramCheckRespData.Detail = fmt.Sprintf("%s - Used: %dMB (%dGB) / Total: %dMB (%dGB) | Used: %d%%", ramCheckRespData.Status, usedMB, usedGB, totalMB, totalGB, usedPercent)
+	ramCheckRespData.Detail = fmt.Sprintf("%s - Used: %dMB (%dGB) / Total: %dMB (%dGB) | Used: %d%%",
+		ramCheckRespData.Status, usedMB, usedGB, totalMB, totalGB, usedPercent)
 
 	return ramCheckRespData, nil
 }

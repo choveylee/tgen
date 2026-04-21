@@ -9,6 +9,8 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/choveylee/tlog"
 	"github.com/gin-gonic/gin"
 
@@ -16,6 +18,10 @@ import (
 	"{{domain}}/{{app_name}}/internal/data"
 	"{{domain}}/{{app_name}}/internal/service"
 )
+
+func HandleHealthz(c *gin.Context) {
+	c.String(http.StatusOK, "ok")
+}
 
 func HandleCpuCheck(c *gin.Context) {
 	ctx := c.Request.Context()
