@@ -1,11 +1,3 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  monitor.go
- * @Version: 1.0.0
- * @Date: 2023/06/27 15:08
- */
-
 package router
 
 import (
@@ -15,7 +7,6 @@ import (
 )
 
 func registerMonitor(router *gin.Engine) {
-	router.GET("/healthz", handler.HandleHealthz)
 	router.GET("/cpu-check", handler.HandleCpuCheck)
 	router.GET("/ram-check", handler.HandleRamCheck)
 }

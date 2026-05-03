@@ -1,11 +1,4 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  main.go
- * @Version: 1.0.0
- * @Date: 2023/12/26 14:21
- */
-
+// Command orm-gen generates GORM query code for the service schema.
 package main
 
 import (
@@ -26,35 +19,33 @@ func main() {
 
 	serverDsn, err := tcfg.String(tcfg.LocalKey("SERVER_MYSQL_DSN"))
 	if err != nil {
-		tlog.E(ctx).Err(err).Msgf("main (%s) err (cfg string %s).",
-			"SERVER_MYSQL_DSN", err)
+		tlog.E(ctx).Err(err).Msgf("ORM code generation failed while reading configuration key %s", "SERVER_MYSQL_DSN")
 
 		return
 	}
 
 	serverClient, err := tdb.NewMysqlClient(ctx, serverDsn)
 	if err != nil {
-		tlog.E(ctx).Err(err).Msgf("main (%s) err (new mysql client %s).",
-			serverDsn, err)
+		tlog.E(ctx).Err(err).Msg("ORM code generation failed while creating the MySQL client")
 
 		return
 	}
 
 	generator := gen.NewGenerator(gen.Config{
 		OutPath: "./model/query",
-		Mode:    gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface, // generate mode
+		Mode:    gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface, // Generation mode.
 	})
 
 	sqlDB := serverClient.DB(ctx, runMode)
 
 	generator.UseDB(sqlDB)
 
-	// Generate basic type-safe DAO API for table `template` following conventions
+	// Generate the basic type-safe DAO API for the template table.
 	generator.ApplyBasic(generator.GenerateModel("template"))
 
-	// Generate Type Safe API with Dynamic SQL defined on Query interface for `template`
+	// Generate the type-safe API with dynamic SQL declared on the query interface.
 	generator.ApplyInterface(func(TemplateMethod) {}, generator.GenerateModel("template"))
 
-	// Generate the code
+	// Generate the code.
 	generator.Execute()
 }

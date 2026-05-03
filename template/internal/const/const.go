@@ -1,11 +1,4 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  common.go
- * @Version: 1.0.0
- * @Date: 2023/12/06 09:15
- */
-
+// Package constant defines shared constants used across the service.
 package constant
 
 const (

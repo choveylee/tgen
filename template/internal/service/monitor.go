@@ -1,11 +1,3 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  monitor.go
- * @Version: 1.0.0
- * @Date: 2023/06/27 15:14
- */
-
 package service
 
 import (
@@ -28,10 +20,11 @@ const (
 	loadPerCoreWarning  = 0.85
 )
 
+// CpuCheck returns the current CPU health status for the host.
 func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 	cores, err := cpu.Counts(false)
 	if err != nil {
-		errMsg := tlog.E(ctx).Err(err).Msgf("cpu check err (cpu counts %s).", err)
+		errMsg := tlog.E(ctx).Err(err).Msg("CPU health check failed while reading the core count")
 
 		return nil, terror.NewRawTerror(ctx, err, errMsg)
 	}
@@ -42,7 +35,7 @@ func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 
 	avgStat, err := load.Avg()
 	if err != nil {
-		errMsg := tlog.E(ctx).Err(err).Msgf("cpu check err (load avg %s).", err)
+		errMsg := tlog.E(ctx).Err(err).Msg("CPU health check failed while reading the load average")
 
 		return nil, terror.NewRawTerror(ctx, err, errMsg)
 	}
@@ -74,10 +67,11 @@ func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 	return cpuCheckRespData, nil
 }
 
+// RamCheck returns the current memory health status for the host.
 func RamCheck(ctx context.Context) (*data.RamCheckRespData, *terror.Terror) {
 	virtualMemoryStat, err := mem.VirtualMemory()
 	if err != nil {
-		errMsg := tlog.E(ctx).Err(err).Msgf("ram check err (virtual memory %s).", err)
+		errMsg := tlog.E(ctx).Err(err).Msg("Memory health check failed while reading virtual memory statistics")
 
 		return nil, terror.NewRawTerror(ctx, err, errMsg)
 	}

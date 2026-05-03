@@ -1,11 +1,4 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  router.go
- * @Version: 1.0.0
- * @Date: 2023/11/15 21:49
- */
-
+// Package router configures the HTTP routing used by the generated service.
 package router
 
 import (
@@ -17,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// NewRouter constructs the service HTTP router and registers application routes.
 func NewRouter(ctx context.Context) *gin.Engine {
 	appName := tcfg.DefaultString("APP_NAME", "unknown")
 
@@ -24,7 +18,7 @@ func NewRouter(ctx context.Context) *gin.Engine {
 
 	router.Use(tmiddleware.CorsMiddleware())
 
-	// register monitor
+	// Register monitoring routes.
 	registerMonitor(router)
 
 	return router

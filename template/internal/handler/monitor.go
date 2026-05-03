@@ -1,16 +1,6 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  monitor.go
- * @Version: 1.0.0
- * @Date: 2023/06/27 14:50
- */
-
 package handler
 
 import (
-	"net/http"
-
 	"github.com/choveylee/tlog"
 	"github.com/gin-gonic/gin"
 
@@ -19,16 +9,13 @@ import (
 	"{{domain}}/{{app_name}}/internal/service"
 )
 
-func HandleHealthz(c *gin.Context) {
-	c.String(http.StatusOK, "ok")
-}
-
+// HandleCpuCheck serves the CPU health check endpoint.
 func HandleCpuCheck(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	cpuCheckRespData, errx := service.CpuCheck(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msgf("handle cpu check err (cpu check %s).", errx)
+		tlog.E(ctx).Err(errx).Msg("CPU health check request failed")
 		SendFailResponse(c, errx.ErrCode(), errx.Error())
 
 		return
@@ -40,12 +27,13 @@ func HandleCpuCheck(c *gin.Context) {
 	})
 }
 
+// HandleRamCheck serves the memory health check endpoint.
 func HandleRamCheck(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	ramCheckRespData, errx := service.RamCheck(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msgf("handle ram check err (ram check %s).", errx)
+		tlog.E(ctx).Err(errx).Msg("Memory health check request failed")
 		SendFailResponse(c, errx.ErrCode(), errx.Error())
 
 		return

@@ -1,11 +1,4 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  lib.go
- * @Version: 1.0.0
- * @Date: 2023/11/15 21:49
- */
-
+// Package lib initializes shared library integrations required by the service.
 package lib
 
 import (
@@ -14,6 +7,7 @@ import (
 	"github.com/choveylee/terror"
 )
 
+// InitLib initializes shared library dependencies required by the service.
 func InitLib(ctx context.Context) *terror.Terror {
 	return nil
 }

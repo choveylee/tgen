@@ -1,11 +1,4 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  model.go
- * @Version: 1.0.0
- * @Date: 2023/11/15 18:10
- */
-
+// Package model initializes storage clients and repository-layer dependencies.
 package model
 
 import (
@@ -18,10 +11,11 @@ import (
 	"{{domain}}/{{app_name}}/internal/model/redis"
 )
 
+// InitModel initializes all persistence-layer dependencies.
 func InitModel(ctx context.Context) *terror.Terror {
 	errx := dbmodel.InitMysqlModel(ctx)
 	if errx != nil {
-		errMsg := tlog.E(ctx).Err(errx).Msgf("init model err (init mysql model %s).", errx)
+		errMsg := tlog.E(ctx).Err(errx).Msg("model initialization failed while setting up MySQL dependencies")
 		errx.AttachErrMsg(errMsg)
 
 		return errx
@@ -29,7 +23,7 @@ func InitModel(ctx context.Context) *terror.Terror {
 
 	errx = redmodel.InitRedisModel(ctx)
 	if errx != nil {
-		errMsg := tlog.E(ctx).Err(errx).Msgf("init model err (init redis model %s).", errx)
+		errMsg := tlog.E(ctx).Err(errx).Msg("model initialization failed while setting up Redis dependencies")
 		errx.AttachErrMsg(errMsg)
 
 		return errx

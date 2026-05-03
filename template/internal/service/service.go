@@ -1,11 +1,4 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  service.go
- * @Version: 1.0.0
- * @Date: 2023/11/15 21:49
- */
-
+// Package service implements service-layer logic exposed through HTTP handlers and scheduled jobs.
 package service
 
 import (
@@ -14,6 +7,7 @@ import (
 	"github.com/choveylee/terror"
 )
 
+// InitService initializes service-layer dependencies.
 func InitService(ctx context.Context) *terror.Terror {
 	return nil
 }

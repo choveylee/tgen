@@ -1,11 +1,4 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  redis.go
- * @Version: 1.0.0
- * @Date: 2023/11/15 21:23
- */
-
+// Package redmodel configures the Redis client shared by the service.
 package redmodel
 
 import (
@@ -27,18 +20,20 @@ var (
 	serverClient *tdb.RedisClient
 )
 
+// GetCronRedisClient returns the Redis client used for cron coordination.
 func GetCronRedisClient() *redis.Client {
 	return serverClient.Client()
 }
 
+// InitRedisModel initializes the shared Redis client.
 func InitRedisModel(ctx context.Context) *terror.Terror {
 	runMode = tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), constant.RunModeDebug)
 
 	serverAddress := tcfg.DefaultString(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_REDIS_ADDRESS")), "")
 	if serverAddress == "" {
-		errMsg := tlog.E(ctx).Msgf("init redis model err (server redis address illegal).")
+		errMsg := tlog.E(ctx).Msg("Redis initialization failed because the server address is not configured")
 
-		errx := terror.NewRawTerror(ctx, terror.ErrConfIllegal("server redis address"), errMsg)
+		errx := terror.NewRawTerror(ctx, terror.ErrConfInvalid("SERVER_REDIS_ADDRESS"), errMsg)
 
 		return errx
 	}
@@ -51,8 +46,8 @@ func InitRedisModel(ctx context.Context) *terror.Terror {
 
 	serverClient, err = tdb.NewRedisClient(ctx, serverAddress, serverPassword, serverPoolSize)
 	if err != nil {
-		errMsg := tlog.E(ctx).Err(err).Msgf("init redis model (%s, %s, %d) err (new redis client %s).",
-			serverAddress, serverPassword, serverPoolSize, err)
+		errMsg := tlog.E(ctx).Err(err).Msgf("Redis initialization failed while creating the client for address %q with pool size %d",
+			serverAddress, serverPoolSize)
 
 		errx := terror.NewRawTerror(ctx, err, errMsg)
 

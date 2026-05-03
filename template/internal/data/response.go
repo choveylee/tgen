@@ -1,17 +1,11 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  response.go
- * @Version: 1.0.0
- * @Date: 2023/12/06 09:17
- */
-
+// Package data defines transport payloads used by the HTTP handlers.
 package data
 
 import (
 	"encoding/json"
 )
 
+// Response is the standard envelope used by HTTP responses.
 type Response struct {
 	Code    int    `json:"code"`
 	Message string `json:"message,omitempty"`
@@ -21,8 +15,9 @@ type Response struct {
 	ExData interface{} `json:"ex_data,omitempty"`
 }
 
-func MarshalData(data interface{}) string {
-	retData, _ := json.Marshal(data)
+// MarshalData marshals v to JSON and returns the encoded string.
+func MarshalData(v interface{}) string {
+	retData, _ := json.Marshal(v)
 
 	return string(retData)
 }

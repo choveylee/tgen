@@ -1,11 +1,3 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  error.go
- * @Version: 1.0.0
- * @Date: 2023/12/06 09:15
- */
-
 package constant
 
 import (
@@ -16,7 +8,7 @@ var errorCodes = make(map[int]string)
 
 func register(errCode int, errMsg string) int {
 	if _, ok := errorCodes[errCode]; ok {
-		panic("duplicated error code defined")
+		panic("duplicate error code registration")
 	}
 
 	errorCodes[errCode] = errMsg
@@ -24,6 +16,7 @@ func register(errCode int, errMsg string) int {
 	return errCode
 }
 
+// ErrMsg returns the registered business error message for errCode.
 func ErrMsg(errCode int) (string, bool) {
 	errMsg, ok := errorCodes[errCode]
 
@@ -33,21 +26,22 @@ func ErrMsg(errCode int) (string, bool) {
 var (
 	ErrorCodeOK = register(0, "")
 
-	ErrorCodeMysqlServerAbnormal = register(100001, "mysql服务器异常")
-	ErrorCodeRedisServerAbnormal = register(100002, "redis服务器异常")
-	ErrorCodeHttpServerAbnormal  = register(100003, "http服务器异常")
+	ErrorCodeMysqlServerAbnormal = register(100001, "MySQL service is unavailable")
+	ErrorCodeRedisServerAbnormal = register(100002, "Redis service is unavailable")
+	ErrorCodeHttpServerAbnormal  = register(100003, "HTTP service is unavailable")
 
-	ErrorCodeUnknownServerAbnormal = register(100011, "未知服务器异常")
+	ErrorCodeUnknownServerAbnormal = register(100011, "An unexpected service error occurred")
 
-	ErrorCodeRequestBodyIllegal  = register(100021, "请求body非法")
-	ErrorCodeRequestParamIllegal = register(100022, "请求参数非法")
+	ErrorCodeRequestBodyIllegal  = register(100021, "The request body is invalid")
+	ErrorCodeRequestParamIllegal = register(100022, "One or more request parameters are invalid")
 
-	ErrorCodeAccessTokenIllegal = register(100031, "access token非法")
-	ErrorCodeAccessTokenExpired = register(100032, "access token已过期")
+	ErrorCodeAccessTokenIllegal = register(100031, "The access token is invalid")
+	ErrorCodeAccessTokenExpired = register(100032, "The access token has expired")
 
-	ErrorCodePermissionForbidden = register(100041, "权限禁止")
+	ErrorCodePermissionForbidden = register(100041, "The requested operation is not permitted")
 )
 
+// StatusCode returns the HTTP status code mapped to errCode.
 func StatusCode(errCode int) int {
 	switch errCode {
 	case ErrorCodeOK:
@@ -72,6 +66,6 @@ func StatusCode(errCode int) int {
 		return http.StatusForbidden
 
 	default:
-		panic("unknown error code")
+		panic("unrecognized error code")
 	}
 }

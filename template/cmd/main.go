@@ -1,11 +1,4 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  main.go
- * @Version: 1.0.0
- * @Date: 2023/12/06 08:54
- */
-
+// Command {{app_name}} starts the generated HTTP service.
 package main
 
 import (
@@ -47,8 +40,7 @@ func main() {
 	// init migrations
 	errx := runMigrate(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msgf("main err (run migrate %s).",
-			errx)
+		tlog.E(ctx).Err(errx).Msg("service startup failed during database migration")
 
 		return
 	}
@@ -56,8 +48,7 @@ func main() {
 	// init lib
 	errx = lib.InitLib(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msgf("main err (init lib %s).",
-			errx)
+		tlog.E(ctx).Err(errx).Msg("service startup failed during shared library initialization")
 
 		return
 	}
@@ -65,8 +56,7 @@ func main() {
 	// init model
 	errx = model.InitModel(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msgf("main err (init model %s).",
-			errx)
+		tlog.E(ctx).Err(errx).Msg("service startup failed during model initialization")
 
 		return
 	}
@@ -74,16 +64,14 @@ func main() {
 	// init cron
 	errx = crontab.InitCron(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msgf("main err (init cron %s).",
-			errx)
+		tlog.E(ctx).Err(errx).Msg("service startup failed during cron configuration initialization")
 
 		return
 	}
 
 	errx = crontab.StartCron(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msgf("main err (start cron %s).",
-			errx)
+		tlog.E(ctx).Err(errx).Msg("service startup failed during cron job registration")
 
 		return
 	}
@@ -91,8 +79,7 @@ func main() {
 	// init service
 	errx = service.InitService(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msgf("main err (init service %s).",
-			errx)
+		tlog.E(ctx).Err(errx).Msg("service startup failed during service initialization")
 
 		return
 	}
@@ -101,20 +88,22 @@ func main() {
 
 	go func() {
 		if err := waitForTcpDial(ctx, httpPort, 30*time.Second); err != nil {
-			tlog.W(ctx).Msg("http server tcp not ready within timeout, skip health ping.")
+			tlog.W(ctx).Msg("startup health probe was skipped because the HTTP listener did not become ready before the timeout elapsed")
 
 			return
 		}
 
 		errx := pingServer(ctx, httpPort)
 		if errx != nil {
-			tlog.W(ctx).Msg("http server health check failed after tcp ready.")
+			tlog.W(ctx).Msg("startup health probe failed after the HTTP listener became ready")
 		} else {
-			tlog.I(ctx).Msg("http server deployed success.")
+			tlog.I(ctx).Msg("HTTP server started successfully")
 		}
 	}()
 
-	tserver.StartHttpServer(ctx, router.NewRouter(ctx), httpPort)
+	if err := tserver.StartHttpServer(ctx, router.NewRouter(ctx), httpPort); err != nil {
+		tlog.F(ctx).Err(err).Msg("HTTP server exited with an error")
+	}
 }
 
 func runMigrate(ctx context.Context) *terror.Terror {
@@ -122,20 +111,29 @@ func runMigrate(ctx context.Context) *terror.Terror {
 
 	serverDsn, err := tcfg.String(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_MYSQL_DSN")))
 	if err != nil {
-		errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s::%s) err (cfg string %s).",
-			runMode, "SERVER_MYSQL_DSN", err)
+		errMsg := tlog.E(ctx).Err(err).Msgf("database migration setup failed while reading configuration key %q (run_mode=%s)",
+			fmt.Sprintf("%s::%s", runMode, "SERVER_MYSQL_DSN"), runMode,
+		)
 
 		errx := terror.NewRawTerror(ctx, err, errMsg)
 
 		return errx
 	}
 
+	serverDBName := ""
+	if parsedCfg, parseErr := mysql.ParseDSN(serverDsn); parseErr == nil {
+		serverDBName = parsedCfg.DBName
+	}
+
 	client, err := migrate.New("file://migration", "mysql://"+tutil.MysqlDsnEncode(serverDsn))
 	if err != nil {
+		initialClientErr := err
+
 		serverCfg, err := mysql.ParseDSN(serverDsn)
 		if err != nil {
-			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s) err (parse dsn %s).",
-				serverDsn, err)
+			errMsg := tlog.E(ctx).Err(err).Msgf("database migration setup failed while parsing the MySQL DSN (run_mode=%s, migration_source=file://migration, initial_migration_client_error=%v)",
+				runMode, initialClientErr,
+			)
 
 			errx := terror.NewRawTerror(ctx, err, errMsg)
 
@@ -144,13 +142,18 @@ func runMigrate(ctx context.Context) *terror.Terror {
 
 		dbName := serverCfg.DBName
 
+		tlog.W(ctx).Err(initialClientErr).Msgf("database migration client creation failed; attempting database creation fallback (run_mode=%s, database=%q, migration_source=file://migration)",
+			runMode, dbName,
+		)
+
 		serverCfg.DBName = ""
 		tmpDsn := serverCfg.FormatDSN()
 
 		db, err := sql.Open("mysql", tmpDsn)
 		if err != nil {
-			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s, %s) err (open mysql %s).",
-				serverDsn, tmpDsn, err)
+			errMsg := tlog.E(ctx).Err(err).Msgf("database migration setup failed while opening the MySQL connection (run_mode=%s, database=%q, migration_source=file://migration, initial_migration_client_error=%v)",
+				runMode, dbName, initialClientErr,
+			)
 
 			errx := terror.NewRawTerror(ctx, err, errMsg)
 
@@ -161,8 +164,9 @@ func runMigrate(ctx context.Context) *terror.Terror {
 
 		_, err = db.Exec("CREATE DATABASE IF NOT EXISTS " + "`" + dbName + "` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci")
 		if err != nil {
-			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s, %s, %s) err (create database %s).",
-				serverDsn, tmpDsn, dbName, err)
+			errMsg := tlog.E(ctx).Err(err).Msgf("database migration setup failed while creating database %q (run_mode=%s, migration_source=file://migration, initial_migration_client_error=%v)",
+				dbName, runMode, initialClientErr,
+			)
 
 			errx := terror.NewRawTerror(ctx, err, errMsg)
 
@@ -171,8 +175,9 @@ func runMigrate(ctx context.Context) *terror.Terror {
 
 		client, err = migrate.New("file://migration", "mysql://"+tutil.MysqlDsnEncode(serverDsn))
 		if err != nil {
-			errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s) err (migrate new %s).",
-				serverDsn, err)
+			errMsg := tlog.E(ctx).Err(err).Msgf("database migration setup failed while creating the migration client (run_mode=%s, database=%q, migration_source=file://migration, initial_migration_client_error=%v)",
+				runMode, dbName, initialClientErr,
+			)
 
 			errx := terror.NewRawTerror(ctx, err, errMsg)
 
@@ -183,14 +188,25 @@ func runMigrate(ctx context.Context) *terror.Terror {
 	defer func() {
 		srcErr, dbErr := client.Close()
 		if srcErr != nil || dbErr != nil {
-			tlog.W(ctx).Msgf("run migrate close err (source %s, database %s).", srcErr, dbErr)
+			tlog.W(ctx).Msgf("database migration cleanup reported errors (source: %v, database: %v)", srcErr, dbErr)
 		}
 	}()
 
 	err = client.Up()
 	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		errMsg := tlog.E(ctx).Err(err).Msgf("run migrate (%s) err (migrate up %s).",
-			serverDsn, err)
+		if serverDBName != "" {
+			errMsg := tlog.E(ctx).Err(err).Msgf("database migration failed while applying migration files (run_mode=%s, database=%q, migration_source=file://migration)",
+				runMode, serverDBName,
+			)
+
+			errx := terror.NewRawTerror(ctx, err, errMsg)
+
+			return errx
+		}
+
+		errMsg := tlog.E(ctx).Err(err).Msgf("database migration failed while applying migration files (run_mode=%s, migration_source=file://migration)",
+			runMode,
+		)
 
 		errx := terror.NewRawTerror(ctx, err, errMsg)
 
@@ -224,10 +240,12 @@ func waitForTcpDial(ctx context.Context, port int, timeout time.Duration) error 
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	return fmt.Errorf("timeout waiting for tcp %s", address)
+	return fmt.Errorf("timed out waiting for the TCP listener at %s", address)
 }
 
-// resolvePingBaseUrl 与 HTTP 监听端口对齐：配置为空或为本机回环时，统一使用 httpPort，避免只改 HTTP_PORT 未改 SERVER_PING_HOST。
+// resolvePingBaseUrl aligns the health probe base URL with the configured HTTP port.
+// When the configured host is empty or points to a loopback address, the function uses
+// httpPort so that changing HTTP_PORT does not require a separate ping-host update.
 func resolvePingBaseUrl(httpPort int) string {
 	serverPingHost := strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey("SERVER_PING_HOST"), ""))
 	if serverPingHost == "" {
@@ -275,7 +293,7 @@ func pingServer(ctx context.Context, httpPort int) *terror.Terror {
 		return nil
 	}
 
-	errMsg := tlog.E(ctx).Msg("ping server err (over limited).")
+	errMsg := tlog.E(ctx).Msg("startup health probe failed after all retry attempts")
 
 	errx := terror.NewRawTerror(ctx, terror.ErrSvcExecute("http server"), errMsg)
 

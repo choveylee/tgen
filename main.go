@@ -1,3 +1,4 @@
+// Command tgen generates a backend service scaffold from the local template directory.
 package main
 
 import (
@@ -46,7 +47,7 @@ func copyTree(srcDir, destDir string) error {
 		return err
 	}
 	if !srcInfo.IsDir() {
-		return errors.New("src dir type illegal")
+		return errors.New("source path must refer to a directory")
 	}
 
 	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
@@ -73,6 +74,7 @@ func copyTree(srcDir, destDir string) error {
 	})
 }
 
+// CopyDir recursively copies the contents of srcDir into destDir, creating destDir when necessary.
 func CopyDir(srcDir string, destDir string) error {
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
@@ -104,7 +106,8 @@ func replaceContent(path string, domain, appName string) error {
 	return os.WriteFile(outPath, []byte(strContent), 0o666)
 }
 
-// shouldApplyPlaceholders 仅对可能包含 {{...}} 的文本源文件做替换，避免误处理二进制等文件。
+// shouldApplyPlaceholders reports whether placeholder substitution should be applied to path.
+// It intentionally limits substitution to known text file types so that binary assets are not modified.
 func shouldApplyPlaceholders(path string) bool {
 	base := filepath.Base(path)
 	if base == "Dockerfile" {
@@ -127,6 +130,7 @@ export CGO_ENABLED=0;
 cd %s;
 go mod init %s/%s;
 go mod tidy;
+go get gorm.io/plugin/dbresolver@v1.6.2
 go get go@1.25.0
 `
 )

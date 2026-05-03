@@ -1,13 +1,6 @@
-/**
- * @Author: lidonglin
- * @Description:
- * @File:  monitor.go
- * @Version: 1.0.0
- * @Date: 2023/12/06 20:51
- */
-
 package data
 
+// CpuCheckRespData contains the CPU health check result returned by the monitoring endpoint.
 type CpuCheckRespData struct {
 	StatusCode int `json:"-"`
 
@@ -15,6 +8,7 @@ type CpuCheckRespData struct {
 	Detail string `json:"detail"`
 }
 
+// RamCheckRespData contains the memory health check result returned by the monitoring endpoint.
 type RamCheckRespData struct {
 	StatusCode int `json:"-"`
 
