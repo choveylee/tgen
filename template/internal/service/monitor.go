@@ -24,9 +24,10 @@ const (
 func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 	cores, err := cpu.Counts(false)
 	if err != nil {
-		errMsg := tlog.E(ctx).Err(err).Msg("CPU health check failed while reading the core count")
+		errMsg := tlog.E(ctx).Err(err).Msgf("CPU check err (cpu counts %v)",
+			err)
 
-		return nil, terror.NewRawTerror(ctx, err, errMsg)
+		return nil, terror.NewTerror(ctx, err, constant.ErrorCodeUnknownServerAbnormal, errMsg)
 	}
 
 	if cores < 1 {
@@ -35,7 +36,8 @@ func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 
 	avgStat, err := load.Avg()
 	if err != nil {
-		errMsg := tlog.E(ctx).Err(err).Msg("CPU health check failed while reading the load average")
+		errMsg := tlog.E(ctx).Err(err).Msgf("CPU check err (load avg %v)",
+			err)
 
 		return nil, terror.NewRawTerror(ctx, err, errMsg)
 	}
@@ -71,9 +73,10 @@ func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 func RamCheck(ctx context.Context) (*data.RamCheckRespData, *terror.Terror) {
 	virtualMemoryStat, err := mem.VirtualMemory()
 	if err != nil {
-		errMsg := tlog.E(ctx).Err(err).Msg("Memory health check failed while reading virtual memory statistics")
+		errMsg := tlog.E(ctx).Err(err).Msgf("Ram check err (mem virtual memory %v)",
+			err)
 
-		return nil, terror.NewRawTerror(ctx, err, errMsg)
+		return nil, terror.NewTerror(ctx, err, constant.ErrorCodeUnknownServerAbnormal, errMsg)
 	}
 
 	usedMB := int(virtualMemoryStat.Used) / constant.MB

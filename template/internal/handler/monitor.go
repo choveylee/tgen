@@ -4,8 +4,6 @@ import (
 	"github.com/choveylee/tlog"
 	"github.com/gin-gonic/gin"
 
-	"{{domain}}/{{app_name}}/internal/const"
-	"{{domain}}/{{app_name}}/internal/data"
 	"{{domain}}/{{app_name}}/internal/service"
 )
 
@@ -15,16 +13,15 @@ func HandleCpuCheck(c *gin.Context) {
 
 	cpuCheckRespData, errx := service.CpuCheck(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msg("CPU health check request failed")
-		SendFailResponse(c, errx.ErrCode(), errx.Error())
+		errMsg := tlog.E(ctx).Err(errx).Msgf("Handle cpu check err (cpu check %v)",
+			errx)
+
+		SendFailResponse(c, errx.ErrCode(), errMsg)
 
 		return
 	}
 
-	c.JSON(cpuCheckRespData.StatusCode, data.Response{
-		Code: constant.ErrorCodeOK,
-		Data: cpuCheckRespData,
-	})
+	SendPassResponse(c, cpuCheckRespData)
 }
 
 // HandleRamCheck serves the memory health check endpoint.
@@ -33,14 +30,13 @@ func HandleRamCheck(c *gin.Context) {
 
 	ramCheckRespData, errx := service.RamCheck(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msg("Memory health check request failed")
-		SendFailResponse(c, errx.ErrCode(), errx.Error())
+		errMsg := tlog.E(ctx).Err(errx).Msgf("Handle ram check err (ram check %v)",
+			errx)
+
+		SendFailResponse(c, errx.ErrCode(), errMsg)
 
 		return
 	}
 
-	c.JSON(ramCheckRespData.StatusCode, data.Response{
-		Code: constant.ErrorCodeOK,
-		Data: ramCheckRespData,
-	})
+	SendPassResponse(c, ramCheckRespData)
 }

@@ -3,3 +3,6 @@
 test-backend/.idea/workspace.xml
 tgen
 .idea/go.imports.xml
+test-backend/.idea/modules.xml
+test-backend/.idea/test-backend.iml
+test-backend/.idea/vcs.xml
