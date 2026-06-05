@@ -26,19 +26,19 @@ func ErrMsg(errCode int) (string, bool) {
 var (
 	ErrorCodeOK = register(0, "")
 
-	ErrorCodeMysqlServerAbnormal = register(100001, "MySQL service is unavailable")
-	ErrorCodeRedisServerAbnormal = register(100002, "Redis service is unavailable")
-	ErrorCodeHttpServerAbnormal  = register(100003, "HTTP service is unavailable")
+	ErrorCodeMysqlServerAbnormal = register(100001, "Mysql服务器异常")
+	ErrorCodeRedisServerAbnormal = register(100002, "Redis服务器异常")
+	ErrorCodeHttpServerAbnormal  = register(100003, "Http服务器异常")
 
-	ErrorCodeUnknownServerAbnormal = register(100011, "An unexpected service error occurred")
+	ErrorCodeUnknownServerAbnormal = register(100011, "未知服务器异常")
 
-	ErrorCodeRequestBodyIllegal  = register(100021, "The request body is invalid")
-	ErrorCodeRequestParamIllegal = register(100022, "One or more request parameters are invalid")
+	ErrorCodeRequestBodyInvalid  = register(100021, "请求Body非法")
+	ErrorCodeRequestParamInvalid = register(100022, "请求参数非法")
 
-	ErrorCodeAccessTokenIllegal = register(100031, "The access token is invalid")
-	ErrorCodeAccessTokenExpired = register(100032, "The access token has expired")
+	ErrorCodeAccessTokenInvalid = register(100031, "AccessToken非法")
+	ErrorCodeAccessTokenExpired = register(100032, "AccessToken已过期")
 
-	ErrorCodePermissionForbidden = register(100041, "The requested operation is not permitted")
+	ErrorCodePermissionForbidden = register(100041, "权限禁止访问")
 )
 
 // StatusCode returns the HTTP status code mapped to errCode.
@@ -53,10 +53,10 @@ func StatusCode(errCode int) int {
 	case ErrorCodeUnknownServerAbnormal:
 		return http.StatusInternalServerError
 
-	case ErrorCodeRequestBodyIllegal, ErrorCodeRequestParamIllegal:
+	case ErrorCodeRequestBodyInvalid, ErrorCodeRequestParamInvalid:
 		return http.StatusBadRequest
 
-	case ErrorCodeAccessTokenIllegal:
+	case ErrorCodeAccessTokenInvalid:
 		return http.StatusUnauthorized
 
 	case ErrorCodeAccessTokenExpired:
