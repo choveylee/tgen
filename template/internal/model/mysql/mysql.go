@@ -81,3 +81,8 @@ func InitMysqlModel(ctx context.Context) *terror.Terror {
 func Tx(ctx context.Context) *gorm.DB {
 	return serverClient.Tx(ctx, runMode)
 }
+
+// DB returns the request-scoped GORM database handle.
+func DB(ctx context.Context) *gorm.DB {
+	return serverClient.DB(ctx, runMode)
+}
