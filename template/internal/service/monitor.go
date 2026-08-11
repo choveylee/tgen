@@ -27,7 +27,9 @@ func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 		errMsg := tlog.E(ctx).Err(err).Msgf("CPU check err (cpu counts %v)",
 			err)
 
-		return nil, terror.NewTerror(ctx, err, constant.ErrorCodeUnknownServerAbnormal, errMsg)
+		errx := terror.NewTerror(ctx, err, constant.ErrorCodeUnknownServerAbnormal, errMsg)
+
+		return nil, errx
 	}
 
 	if cores < 1 {
@@ -39,7 +41,9 @@ func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 		errMsg := tlog.E(ctx).Err(err).Msgf("CPU check err (load avg %v)",
 			err)
 
-		return nil, terror.NewRawTerror(ctx, err, errMsg)
+		errx := terror.NewTerror(ctx, err, constant.ErrorCodeUnknownServerAbnormal, errMsg)
+
+        return nil, errx
 	}
 
 	load1 := avgStat.Load1
@@ -76,7 +80,9 @@ func RamCheck(ctx context.Context) (*data.RamCheckRespData, *terror.Terror) {
 		errMsg := tlog.E(ctx).Err(err).Msgf("Ram check err (mem virtual memory %v)",
 			err)
 
-		return nil, terror.NewTerror(ctx, err, constant.ErrorCodeUnknownServerAbnormal, errMsg)
+		errx := terror.NewTerror(ctx, err, constant.ErrorCodeUnknownServerAbnormal, errMsg)
+
+        return nil, errx
 	}
 
 	usedMB := int(virtualMemoryStat.Used) / constant.MB
