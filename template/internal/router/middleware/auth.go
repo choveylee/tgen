@@ -7,7 +7,7 @@ import (
 
 // AuthMiddleware returns a placeholder authentication middleware.
 func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Next()
+	return func(ginContext *gin.Context) {
+		ginContext.Next()
 	}
 }

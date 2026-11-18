@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/choveylee/terror"
 	"github.com/choveylee/tlog"
@@ -53,17 +52,13 @@ func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 	loadPerCore := load5 / float64(cores)
 
 	cpuCheckRespData := &data.CpuCheckRespData{
-		StatusCode: http.StatusOK,
-
-		Status: "OK",
+		Status: constant.HealthStatusOK,
 	}
 
 	if loadPerCore >= loadPerCoreCritical {
-		cpuCheckRespData.StatusCode = http.StatusInternalServerError
-		cpuCheckRespData.Status = "CRITICAL"
+		cpuCheckRespData.Status = constant.HealthStatusCritical
 	} else if loadPerCore >= loadPerCoreWarning {
-		cpuCheckRespData.StatusCode = http.StatusTooManyRequests
-		cpuCheckRespData.Status = "WARNING"
+		cpuCheckRespData.Status = constant.HealthStatusWarning
 	}
 
 	cpuCheckRespData.Detail = fmt.Sprintf("%s - Load average: %.2f, %.2f, %.2f | Load/core: %.2f | Cores: %d",
@@ -94,17 +89,13 @@ func RamCheck(ctx context.Context) (*data.RamCheckRespData, *terror.Terror) {
 	usedPercent := int(virtualMemoryStat.UsedPercent)
 
 	ramCheckRespData := &data.RamCheckRespData{
-		StatusCode: http.StatusOK,
-
-		Status: "OK",
+		Status: constant.HealthStatusOK,
 	}
 
 	if usedPercent >= 95 {
-		ramCheckRespData.StatusCode = http.StatusInternalServerError
-		ramCheckRespData.Status = "CRITICAL"
+		ramCheckRespData.Status = constant.HealthStatusCritical
 	} else if usedPercent >= 90 {
-		ramCheckRespData.StatusCode = http.StatusTooManyRequests
-		ramCheckRespData.Status = "WARNING"
+		ramCheckRespData.Status = constant.HealthStatusWarning
 	}
 
 	ramCheckRespData.Detail = fmt.Sprintf("%s - Used: %dMB (%dGB) / Total: %dMB (%dGB) | Used: %d%%",

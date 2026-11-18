@@ -16,6 +16,7 @@ import (
 	"{{domain}}/{{app_name}}/internal/const"
 )
 
+// main generates the example ORM queries and exits nonzero on failure.
 func main() {
 	ctx := context.Background()
 	if err := generateQueries(ctx); err != nil {
@@ -28,7 +29,13 @@ func main() {
 // generateQueries builds the sample query API from the migrated template table.
 func generateQueries(ctx context.Context) error {
 	runMode := strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), constant.RunModeDebug))
-	serverDSN := strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey("SERVER_MYSQL_DSN"), ""))
+	if runMode != constant.RunModeDebug && runMode != constant.RunModeRelease {
+		return errors.New("run mode must be debug or release")
+	}
+
+	// Prefer the selected environment while accepting existing standalone ORM configs.
+	serverDSN := strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey(runMode+"::SERVER_MYSQL_DSN"),
+		tcfg.DefaultString(tcfg.LocalKey("SERVER_MYSQL_DSN"), "")))
 	if serverDSN == "" {
 		return errors.New("server mysql dsn must be configured")
 	}
@@ -36,6 +43,10 @@ func generateQueries(ctx context.Context) error {
 	serverClient, err := tdb.NewMysqlClient(ctx, serverDSN)
 	if err != nil {
 		return fmt.Errorf("open the configured MySQL database (error type %T)", err)
+	}
+
+	if serverClient == nil {
+		return errors.New("mysql client must not be nil after initialization")
 	}
 
 	defer serverClient.Close()

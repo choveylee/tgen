@@ -15,9 +15,9 @@ type Response struct {
 	ExData interface{} `json:"ex_data,omitempty"`
 }
 
-// MarshalData marshals v to JSON and returns the encoded string.
-func MarshalData(v interface{}) string {
-	retData, _ := json.Marshal(v)
+// MarshalData marshals value to JSON and returns the encoded string.
+func MarshalData(value interface{}) string {
+	retData, _ := json.Marshal(value)
 
 	return string(retData)
 }

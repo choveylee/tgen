@@ -34,7 +34,7 @@ cp cmd/knowledge_base_backend_config.ini build/
 ./build/knowledge_base_backend
 ```
 
-Fill in the generated MySQL and Redis settings before starting the service. On first startup, the migrations create the sample `template` table used by the ORM generator. To build the sample queries, configure `cmd/orm-gen/orm_gen_config.ini` for that database, copy it next to the executable, and run the command from the generated project directory.
+Fill in the generated MySQL and Redis settings before starting the service. On first startup, the migrations create the sample `template` table used by the ORM generator. To build the sample queries, fill in the empty DSN in `cmd/orm-gen/orm_gen_config.ini` for that database, copy it next to the executable, and run the command from the generated project directory.
 
 ```bash
 go build -o build/orm-gen ./cmd/orm-gen
@@ -42,6 +42,10 @@ cp cmd/orm-gen/orm_gen_config.ini build/
 ./build/orm-gen
 go mod tidy
 ```
+
+The ORM command accepts a DSN in the selected `debug` or `release` section, with the top-level DSN as a fallback for existing configurations. Both commands reject other run modes. The service defaults to the `Asia/Shanghai` timezone when it is omitted.
+
+Startup probe attempts must be positive. The probe runs within a 30-second deadline and retries transient transport errors, HTTP 429 and retryable 5xx responses. Other non-200 responses fail immediately.
 
 Use `sh ./build.sh` to build and assemble the Linux amd64 release files.
 

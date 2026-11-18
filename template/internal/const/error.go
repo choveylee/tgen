@@ -6,6 +6,7 @@ import (
 
 var errorCodeMap = make(map[int]string)
 
+// register reserves a business error code and rejects duplicate registrations.
 func register(errCode int, errMsg string) int {
 	_, ok := errorCodeMap[errCode]
 	if ok {
@@ -42,7 +43,7 @@ var (
 	ErrorCodePermissionForbidden = register(100041, "权限禁止访问")
 )
 
-// StatusCode returns the HTTP status code mapped to errCode.
+// StatusCode maps business error codes to HTTP, defaulting unknown codes to 500.
 func StatusCode(errCode int) int {
 	switch errCode {
 	case ErrorCodeOK:
@@ -67,6 +68,6 @@ func StatusCode(errCode int) int {
 		return http.StatusForbidden
 
 	default:
-		panic("unrecognized error code")
+		return http.StatusInternalServerError
 	}
 }

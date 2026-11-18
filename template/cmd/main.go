@@ -7,15 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/choveylee/tcfg"
 	"github.com/choveylee/terror"
-	"github.com/choveylee/thttp"
 	"github.com/choveylee/tlog"
 	"github.com/choveylee/tserver"
 	"github.com/go-sql-driver/mysql"
@@ -33,6 +30,7 @@ import (
 	"{{domain}}/{{app_name}}/internal/service"
 )
 
+// main validates startup settings, initializes dependencies and serves HTTP.
 func main() {
 	ctx := context.Background()
 
@@ -43,18 +41,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	// init migrations
-	errx := runMigrate(ctx)
+	// Validate library configuration before applying migrations.
+	errx := lib.InitLib(ctx)
 	if errx != nil {
-		tlog.E(ctx).Msg("Service startup stopped during database migration")
+		tlog.E(ctx).Err(errx).Msg("Main err (init lib)")
 
 		os.Exit(1)
 	}
 
-	// init lib
-	errx = lib.InitLib(ctx)
+	errx = runMigrate(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msg("service startup failed during shared library initialization")
+		tlog.E(ctx).Err(errx).Msg("Main err (run migrate)")
 
 		os.Exit(1)
 	}
@@ -62,7 +59,7 @@ func main() {
 	// init model
 	errx = model.InitModel(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msg("service startup failed during model initialization")
+		tlog.E(ctx).Err(errx).Msg("Main err (init model)")
 
 		os.Exit(1)
 	}
@@ -70,14 +67,14 @@ func main() {
 	// init cron
 	errx = crontab.InitCron(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msg("service startup failed during cron configuration initialization")
+		tlog.E(ctx).Err(errx).Msg("Main err (init cron)")
 
 		os.Exit(1)
 	}
 
 	errx = crontab.StartCron(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msg("service startup failed during cron job registration")
+		tlog.E(ctx).Err(errx).Msg("Main err (start cron)")
 
 		os.Exit(1)
 	}
@@ -85,7 +82,7 @@ func main() {
 	// init service
 	errx = service.InitService(ctx)
 	if errx != nil {
-		tlog.E(ctx).Err(errx).Msg("service startup failed during service initialization")
+		tlog.E(ctx).Err(errx).Msg("Main err (init service)")
 
 		os.Exit(1)
 	}
@@ -94,21 +91,21 @@ func main() {
 	defer cancelProbe()
 	go func() {
 		if err := waitForTCPDial(probeCtx, httpPort); err != nil {
-			tlog.W(ctx).Msg("startup health probe was skipped because the HTTP listener did not become ready before the timeout elapsed")
+			tlog.W(ctx).Err(err).Msg("Main err (wait for http listener)")
 
 			return
 		}
 
-		errx := pingServer(probeCtx, httpPort)
+		errx := lib.PingServer(probeCtx)
 		if errx != nil {
-			tlog.W(ctx).Msg("startup health probe failed after the HTTP listener became ready")
+			tlog.W(ctx).Err(errx).Msg("Main err (ping server)")
 		} else {
-			tlog.I(ctx).Msg("HTTP server started successfully")
+			tlog.I(ctx).Msg("Start http server info (ready)")
 		}
 	}()
 
 	if err := tserver.StartHttpServer(ctx, router.NewRouter(ctx), httpPort); err != nil {
-		tlog.F(ctx).Err(err).Msg("HTTP server exited with an error")
+		tlog.F(ctx).Err(err).Msg("Main err (start http server)")
 	}
 }
 
@@ -118,7 +115,8 @@ func runMigrate(ctx context.Context) *terror.Terror {
 	serverDSN := strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey(runMode+"::SERVER_MYSQL_DSN"), ""))
 	config, err := mysql.ParseDSN(serverDSN)
 	if err != nil || config.DBName == "" {
-		errMsg := tlog.E(ctx).Msgf("Apply migrations err (server mysql dsn must specify a database, run_mode=%s)", runMode)
+		errMsg := tlog.E(ctx).Msgf("Apply migrations (run mode: %s) err (server mysql dsn must specify a database)",
+			runMode)
 
 		errx := terror.NewRawTerror(ctx, terror.ErrConfInvalid("server mysql dsn"), errMsg)
 
@@ -126,7 +124,8 @@ func runMigrate(ctx context.Context) *terror.Terror {
 	}
 
 	if err := applyMigrations(ctx, config); err != nil {
-		errMsg := tlog.E(ctx).Detailf("error_type:%T", err).Msgf("Apply MySQL migrations err (run_mode=%s)", runMode)
+		errMsg := tlog.E(ctx).Detailf("error_type:%T", err).Msgf("Apply migrations (run mode: %s) err (apply mysql migrations)",
+			runMode)
 
 		errx := terror.NewRawTerror(ctx, err, errMsg)
 
@@ -180,9 +179,8 @@ func applyMigrations(ctx context.Context, config *mysql.Config) error {
 	}
 
 	defer func() {
-		sourceErr, databaseErr := client.Close()
-		if sourceErr != nil || databaseErr != nil {
-			tlog.W(ctx).Detailf("source_error_type:%T", sourceErr).Detailf("database_error_type:%T", databaseErr).Msg("Close migration client err")
+		if err := errors.Join(client.Close()); err != nil {
+			tlog.W(ctx).Detailf("error_type:%T", err).Msg("Close migration client err")
 		}
 	}()
 
@@ -231,69 +229,4 @@ func waitForTCPDial(ctx context.Context, port int) error {
 		case <-ticker.C:
 		}
 	}
-}
-
-// resolvePingURL attaches the health path and uses HTTP_PORT for loopback
-// targets. A host without a scheme uses HTTP.
-func resolvePingURL(httpPort int) (*url.URL, error) {
-	serverPingHost := strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey("SERVER_PING_HOST"), ""))
-	if serverPingHost == "" {
-		serverPingHost = "http://127.0.0.1"
-	} else if !strings.Contains(serverPingHost, "://") {
-		serverPingHost = "http://" + serverPingHost
-	}
-
-	parsedURL, err := url.Parse(serverPingHost)
-	if err != nil || parsedURL.Hostname() == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
-		return nil, errors.New("server ping host must be a valid HTTP or HTTPS URL")
-	}
-
-	switch parsedURL.Hostname() {
-	case "127.0.0.1", "localhost", "::1":
-		parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), fmt.Sprint(httpPort))
-	}
-
-	return parsedURL.JoinPath("healthz"), nil
-}
-
-// pingServer checks the health endpoint within the startup probe deadline.
-func pingServer(ctx context.Context, httpPort int) *terror.Terror {
-	pingCount := tcfg.DefaultInt(tcfg.LocalKey("SERVER_PING_COUNT"), 3)
-	pingURL, err := resolvePingURL(httpPort)
-	if err != nil {
-		errMsg := tlog.E(ctx).Msg("Check startup health err (server ping host invalid)")
-
-		errx := terror.NewRawTerror(ctx, terror.ErrConfInvalid("server ping host"), errMsg)
-
-		return errx
-	}
-
-	for attempt := range pingCount {
-		if attempt > 0 {
-			timer := time.NewTimer(time.Second)
-			select {
-			case <-ctx.Done():
-				timer.Stop()
-			case <-timer.C:
-			}
-		}
-
-		if ctx.Err() != nil {
-			break
-		}
-
-		response, err := thttp.Get(ctx, pingURL.String(), nil, nil)
-		if err == nil {
-			_ = response.Body.Close()
-			if response.StatusCode == http.StatusOK {
-				return nil
-			}
-		}
-	}
-
-	errMsg := tlog.E(ctx).Msg("Startup health probe failed after all retry attempts")
-
-	errx := terror.NewRawTerror(ctx, terror.ErrSvcExecute("http server"), errMsg)
-
-	return errx
 }

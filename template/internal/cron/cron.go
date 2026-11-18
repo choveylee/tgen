@@ -3,6 +3,7 @@ package crontab
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/choveylee/tcfg"
@@ -19,7 +20,7 @@ var (
 
 // InitCron loads cron configuration.
 func InitCron(ctx context.Context) *terror.Terror {
-	testSyncCron = tcfg.DefaultString(tcfg.LocalKey("TEST_SYNC_CRON"), "")
+	testSyncCron = strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey("TEST_SYNC_CRON"), ""))
 
 	return nil
 }
@@ -31,8 +32,8 @@ func StartCron(ctx context.Context) *terror.Terror {
 	if testSyncCron != "" {
 		_, err := tcron.RegisterSingletonCron(testSyncCron, runTestSync, cronRedisClient, 10*time.Minute)
 		if err != nil {
-			errMsg := tlog.E(ctx).Err(err).Msgf("cron job registration failed for schedule %q",
-				testSyncCron)
+			errMsg := tlog.E(ctx).Err(err).Msgf("Start cron (test sync cron: %q) err (register singleton cron %v)",
+				testSyncCron, err)
 
 			errx := terror.NewRawTerror(ctx, err, errMsg)
 

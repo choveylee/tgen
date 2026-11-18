@@ -3,7 +3,6 @@ package redmodel
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/choveylee/tcfg"
@@ -30,9 +29,9 @@ func GetCronRedisClient() *redis.Client {
 func InitRedisModel(ctx context.Context) *terror.Terror {
 	runMode = strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), constant.RunModeDebug))
 
-	serverAddress := strings.TrimSpace(tcfg.DefaultString(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_REDIS_ADDRESS")), ""))
+	serverAddress := strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey(runMode+"::SERVER_REDIS_ADDRESS"), ""))
 	if serverAddress == "" {
-		errMsg := tlog.E(ctx).Msg("Redis initialization failed because the server address is not configured")
+		errMsg := tlog.E(ctx).Msg("Init redis model err (server redis address empty)")
 
 		errx := terror.NewRawTerror(ctx, terror.ErrConfInvalid("server redis address"), errMsg)
 
@@ -43,24 +42,32 @@ func InitRedisModel(ctx context.Context) *terror.Terror {
 
 	serverPoolSize := tcfg.DefaultInt(tcfg.LocalKey("SERVER_REDIS_POOLSIZE"), 100)
 	if serverPoolSize <= 0 {
-		errMsg := tlog.E(ctx).Msg("Initialize model err (server redis pool size invalid)")
+		errMsg := tlog.E(ctx).Msg("Init redis model err (server redis pool size invalid)")
 
 		errx := terror.NewRawTerror(ctx, terror.ErrConfInvalid("server redis pool size"), errMsg)
 
 		return errx
 	}
 
-	var err error
-
-	serverClient, err = tdb.NewRedisClient(ctx, serverAddress, serverPassword, serverPoolSize)
+	client, err := tdb.NewRedisClient(ctx, serverAddress, serverPassword, serverPoolSize)
 	if err != nil {
-		errMsg := tlog.E(ctx).Err(err).Msgf("Redis initialization failed while creating the client for address %q with pool size %d",
+		errMsg := tlog.E(ctx).Err(err).Msgf("Init redis model (server address: %q, pool size: %d) err (new redis client)",
 			serverAddress, serverPoolSize)
 
 		errx := terror.NewRawTerror(ctx, err, errMsg)
 
 		return errx
 	}
+
+	if client == nil {
+		errMsg := tlog.E(ctx).Msg("Init redis model err (redis client invalid)")
+
+		errx := terror.NewRawTerror(ctx, terror.ErrSvcAbnormal("redis client"), errMsg)
+
+		return errx
+	}
+
+	serverClient = client
 
 	return nil
 }

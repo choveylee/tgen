@@ -17,3 +17,10 @@ const (
 	SortSeqAsc  = "asc"
 	SortSeqDesc = "des"
 )
+
+// Health states are shared by the monitor service and its HTTP handlers.
+const (
+	HealthStatusOK       = "OK"
+	HealthStatusWarning  = "WARNING"
+	HealthStatusCritical = "CRITICAL"
+)

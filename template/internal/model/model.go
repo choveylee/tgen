@@ -15,7 +15,7 @@ import (
 func InitModel(ctx context.Context) *terror.Terror {
 	errx := dbmodel.InitMysqlModel(ctx)
 	if errx != nil {
-		errMsg := tlog.E(ctx).Err(errx).Msg("model initialization failed while setting up MySQL dependencies")
+		errMsg := tlog.E(ctx).Err(errx).Msg("Init model err (init mysql model)")
 		errx.AttachErrMsg(errMsg)
 
 		return errx
@@ -23,7 +23,7 @@ func InitModel(ctx context.Context) *terror.Terror {
 
 	errx = redmodel.InitRedisModel(ctx)
 	if errx != nil {
-		errMsg := tlog.E(ctx).Err(errx).Msg("model initialization failed while setting up Redis dependencies")
+		errMsg := tlog.E(ctx).Err(errx).Msg("Init model err (init redis model)")
 		errx.AttachErrMsg(errMsg)
 
 		return errx
