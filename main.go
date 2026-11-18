@@ -5,112 +5,257 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
-func copyFile(srcPath, destPath string) (int64, error) {
-	srcFile, err := os.Open(srcPath)
-	if err != nil {
-		return -1, err
-	}
-	defer srcFile.Close()
+func main() {
+	domain := "dev.choveylee.top"
+	appName := "knowledge-base-backend"
 
-	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-		return -1, err
-	}
+	if err := generate("template", appName, domain, appName); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 
-	dstFile, err := os.Create(destPath)
-	if err != nil {
-		return -1, err
+		os.Exit(1)
 	}
-	defer dstFile.Close()
-
-	return io.Copy(dstFile, srcFile)
 }
 
-func copyTree(srcDir, destDir string) error {
-	srcDir, err := filepath.Abs(srcDir)
+// generate validates and initializes a private copy before publishing the project.
+func generate(sourceDir, destinationDir, domain, appName string) error {
+	if appName == "" || appName == "." || appName == ".." || strings.ContainsAny(appName, `/\`) {
+		return errors.New("tgen: app name must be a single project name")
+	}
+
+	sourcePath, destinationPath, mode, err := copyPaths(sourceDir, destinationDir)
 	if err != nil {
 		return err
 	}
 
-	destDir, err = filepath.Abs(destDir)
+	stagingPath, err := os.MkdirTemp(filepath.Dir(destinationPath), ".tgen-")
 	if err != nil {
-		return err
+		return fmt.Errorf("tgen: create staging directory: %w", err)
 	}
 
-	srcInfo, err := os.Stat(srcDir)
-	if err != nil {
-		return err
-	}
-	if !srcInfo.IsDir() {
-		return errors.New("source path must refer to a directory")
+	defer os.RemoveAll(stagingPath)
+
+	if err := copyTree(sourcePath, stagingPath); err != nil {
+		return fmt.Errorf("tgen: copy template: %w", err)
 	}
 
-	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.WalkDir(stagingPath, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		rel, err := filepath.Rel(srcDir, path)
+		if !entry.IsDir() && shouldApplyPlaceholders(path) {
+			return replaceContent(path, domain, appName)
+		}
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("tgen: render template: %w", err)
+	}
+
+	script := fmt.Sprintf(exportScriptTemplate, shellQuote(stagingPath), shellQuote(domain), shellQuote(appName))
+	command := exec.Command("/bin/sh", "-c", script)
+	command.Env = append(os.Environ(), "GOWORK=off", "CGO_ENABLED=0")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("tgen: initialize generated module: %w\n%s", err, output)
+	}
+
+	if err := os.Chmod(stagingPath, mode); err != nil {
+		return fmt.Errorf("tgen: set project directory permissions: %w", err)
+	}
+
+	// POSIX rename can replace an empty directory in one operation. It fails
+	// if another process adds files to the destination before publication.
+	if err := syscall.Rename(stagingPath, destinationPath); err != nil {
+		return fmt.Errorf("tgen: publish generated project: %w", err)
+	}
+
+	return nil
+}
+
+// copyPaths resolves symlink aliases before checking that the destination is
+// outside the template. A destination symlink is never a valid output target.
+func copyPaths(sourceDir, destinationDir string) (string, string, fs.FileMode, error) {
+	sourcePath, err := resolvePath(sourceDir)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("tgen: resolve template directory: %w", err)
+	}
+
+	sourceInfo, err := os.Stat(sourcePath)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("tgen: inspect template directory: %w", err)
+	}
+
+	if !sourceInfo.IsDir() {
+		return "", "", 0, errors.New("tgen: template path must be a directory")
+	}
+
+	parentPath, err := resolvePath(filepath.Dir(destinationDir))
+	if err != nil {
+		return "", "", 0, fmt.Errorf("tgen: resolve project parent directory: %w", err)
+	}
+
+	destinationPath := filepath.Join(parentPath, filepath.Base(destinationDir))
+	relativePath, err := filepath.Rel(sourcePath, destinationPath)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	if relativePath != ".." && !strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
+		return "", "", 0, errors.New("tgen: destination must be outside the template directory")
+	}
+
+	info, err := os.Lstat(destinationPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return sourcePath, destinationPath, 0o755, nil
+	}
+
+	if err != nil {
+		return "", "", 0, fmt.Errorf("tgen: inspect project directory: %w", err)
+	}
+
+	if !info.IsDir() {
+		return "", "", 0, errors.New("tgen: project path must be a directory")
+	}
+
+	entries, err := os.ReadDir(destinationPath)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("tgen: read project directory: %w", err)
+	}
+
+	if len(entries) != 0 {
+		return "", "", 0, fmt.Errorf("tgen: destination directory %q must be empty", destinationDir)
+	}
+
+	return sourcePath, destinationPath, info.Mode().Perm(), nil
+}
+
+// resolvePath returns an absolute path with symlinks resolved.
+func resolvePath(path string) (string, error) {
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.EvalSymlinks(absolutePath)
+}
+
+// CopyDir copies the template into an absent or empty destination directory.
+func CopyDir(sourceDir, destinationDir string) error {
+	sourcePath, destinationPath, mode, err := copyPaths(sourceDir, destinationDir)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(destinationPath, mode); err != nil {
+		return err
+	}
+
+	return copyTree(sourcePath, destinationPath)
+}
+
+// copyTree accepts directories and regular files and preserves permission bits.
+func copyTree(sourceDir, destinationDir string) error {
+	return filepath.WalkDir(sourceDir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if rel == "." {
+		if path == sourceDir {
 			return nil
 		}
 
-		destPath := filepath.Join(destDir, rel)
-		if info.IsDir() {
-			return os.MkdirAll(destPath, 0o755)
+		relativePath, err := filepath.Rel(sourceDir, path)
+		if err != nil {
+			return err
 		}
 
-		_, err = copyFile(path, destPath)
-		return err
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		destinationPath := filepath.Join(destinationDir, relativePath)
+		if info.IsDir() {
+			return os.Mkdir(destinationPath, info.Mode().Perm())
+		}
+
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("tgen: template entry %q must be a regular file or directory", relativePath)
+		}
+
+		return copyFile(path, destinationPath, info.Mode().Perm())
 	})
 }
 
-// CopyDir recursively copies the contents of srcDir into destDir, creating destDir when necessary.
-func CopyDir(srcDir string, destDir string) error {
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
+// copyFile creates a new file and rejects attempts to replace an existing path.
+func copyFile(sourcePath, destinationPath string, mode fs.FileMode) error {
+	source, err := os.Open(sourcePath)
+	if err != nil {
 		return err
 	}
 
-	return copyTree(srcDir, destDir)
+	defer source.Close()
+
+	destination, err := os.OpenFile(destinationPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(destination, source)
+
+	return errors.Join(err, destination.Close())
 }
 
-func replaceContent(path string, domain, appName string) error {
+// replaceContent renders placeholders and reserves the final config filename.
+func replaceContent(path, domain, appName string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
-	strContent := string(data)
-	strContent = strings.ReplaceAll(strContent, "{{domain}}", domain)
-	strContent = strings.ReplaceAll(strContent, "{{app_name}}", appName)
-	strContent = strings.ReplaceAll(strContent, "{{app_name2}}", strings.ReplaceAll(appName, "-", "_"))
-	strContent = strings.ReplaceAll(strContent, "{{APP_NAME}}", strings.ToUpper(strings.ReplaceAll(appName, "-", "_")))
-
-	outPath := path
-	if filepath.Base(path) == "template_config.ini" {
-		if err := os.Remove(path); err != nil {
-			return err
-		}
-		outPath = filepath.Join(filepath.Dir(path), fmt.Sprintf("%s_config.ini", strings.ReplaceAll(appName, "-", "_")))
+	appCodeName := strings.ReplaceAll(appName, "-", "_")
+	replacer := strings.NewReplacer(
+		"{{domain}}", domain,
+		"{{app_name}}", appName,
+		"{{app_name2}}", appCodeName,
+		"{{APP_NAME}}", strings.ToUpper(appCodeName),
+	)
+	content := []byte(replacer.Replace(string(data)))
+	if filepath.Base(path) != "template_config.ini" {
+		return os.WriteFile(path, content, 0o644)
 	}
 
-	return os.WriteFile(outPath, []byte(strContent), 0o666)
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	configPath := filepath.Join(filepath.Dir(path), appCodeName+"_config.ini")
+	config, err := os.OpenFile(configPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+
+	_, err = config.Write(content)
+	if err := errors.Join(err, config.Close()); err != nil {
+		return err
+	}
+
+	return os.Remove(path)
 }
 
-// shouldApplyPlaceholders reports whether placeholder substitution should be applied to path.
-// It intentionally limits substitution to known text file types so that binary assets are not modified.
+// shouldApplyPlaceholders limits rendering to known text files.
 func shouldApplyPlaceholders(path string) bool {
-	base := filepath.Base(path)
-	if base == "Dockerfile" {
+	if filepath.Base(path) == "Dockerfile" {
 		return true
 	}
 
@@ -122,51 +267,14 @@ func shouldApplyPlaceholders(path string) bool {
 	}
 }
 
-const (
-	exportScriptTemplate = `#!/bin/bash
-export GOPROXY=https://goproxy.cn,direct;
-export GOSUMDB=off;
-export CGO_ENABLED=0;
-cd %s;
-go mod init %s/%s;
-go mod tidy;
-go get gorm.io/plugin/dbresolver@v1.6.2
-go get go@1.25.0
-`
-)
-
-func main() {
-	domain := "dev.choveylee.top"
-	appName := "test-backend"
-
-	err := CopyDir("template", appName)
-	if err != nil {
-		panic(err)
-	}
-
-	err = filepath.Walk(appName, func(path string, fileInfo os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if fileInfo == nil || fileInfo.IsDir() {
-			return nil
-		}
-		if !shouldApplyPlaceholders(path) {
-			return nil
-		}
-
-		return replaceContent(path, domain, appName)
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	exportScript := fmt.Sprintf(exportScriptTemplate, appName, domain, appName)
-
-	cmd := exec.Command("/bin/sh", "-c", exportScript)
-
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(err)
-	}
+// shellQuote makes one argument safe to interpolate into the shell command.
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
+
+const exportScriptTemplate = `#!/bin/sh
+set -eu
+cd %s
+go mod edit -module=%s/%s
+go mod tidy
+`

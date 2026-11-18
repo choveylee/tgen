@@ -43,7 +43,7 @@ func CpuCheck(ctx context.Context) (*data.CpuCheckRespData, *terror.Terror) {
 
 		errx := terror.NewTerror(ctx, err, constant.ErrorCodeUnknownServerAbnormal, errMsg)
 
-        return nil, errx
+		return nil, errx
 	}
 
 	load1 := avgStat.Load1
@@ -82,7 +82,7 @@ func RamCheck(ctx context.Context) (*data.RamCheckRespData, *terror.Terror) {
 
 		errx := terror.NewTerror(ctx, err, constant.ErrorCodeUnknownServerAbnormal, errMsg)
 
-        return nil, errx
+		return nil, errx
 	}
 
 	usedMB := int(virtualMemoryStat.Used) / constant.MB

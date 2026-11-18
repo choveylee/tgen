@@ -4,6 +4,7 @@ package redmodel
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/choveylee/tcfg"
 	"github.com/choveylee/tdb"
@@ -27,20 +28,27 @@ func GetCronRedisClient() *redis.Client {
 
 // InitRedisModel initializes the shared Redis client.
 func InitRedisModel(ctx context.Context) *terror.Terror {
-	runMode = tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), constant.RunModeDebug)
+	runMode = strings.TrimSpace(tcfg.DefaultString(tcfg.LocalKey("RUN_MODE"), constant.RunModeDebug))
 
-	serverAddress := tcfg.DefaultString(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_REDIS_ADDRESS")), "")
+	serverAddress := strings.TrimSpace(tcfg.DefaultString(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_REDIS_ADDRESS")), ""))
 	if serverAddress == "" {
 		errMsg := tlog.E(ctx).Msg("Redis initialization failed because the server address is not configured")
 
-		errx := terror.NewRawTerror(ctx, terror.ErrConfInvalid("SERVER_REDIS_ADDRESS"), errMsg)
+		errx := terror.NewRawTerror(ctx, terror.ErrConfInvalid("server redis address"), errMsg)
 
 		return errx
 	}
 
-	serverPassword := tcfg.DefaultString(fmt.Sprintf("%s::%s", runMode, tcfg.LocalKey("SERVER_REDIS_PASSWORD")), "")
+	serverPassword := tcfg.DefaultString(tcfg.LocalKey(runMode+"::SERVER_REDIS_PASSWORD"), "")
 
 	serverPoolSize := tcfg.DefaultInt(tcfg.LocalKey("SERVER_REDIS_POOLSIZE"), 100)
+	if serverPoolSize <= 0 {
+		errMsg := tlog.E(ctx).Msg("Initialize model err (server redis pool size invalid)")
+
+		errx := terror.NewRawTerror(ctx, terror.ErrConfInvalid("server redis pool size"), errMsg)
+
+		return errx
+	}
 
 	var err error
 

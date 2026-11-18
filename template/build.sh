@@ -1,4 +1,7 @@
 #!/bin/sh
+set -eu
+
+cd "$(dirname "$0")"
 
 mkdir -p build
 cp -R ./migration ./build

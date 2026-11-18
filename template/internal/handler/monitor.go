@@ -21,7 +21,7 @@ func HandleCpuCheck(c *gin.Context) {
 		return
 	}
 
-	SendPassResponse(c, cpuCheckRespData)
+	SendResponse(c, cpuCheckRespData.StatusCode, cpuCheckRespData)
 }
 
 // HandleRamCheck serves the memory health check endpoint.
@@ -38,5 +38,5 @@ func HandleRamCheck(c *gin.Context) {
 		return
 	}
 
-	SendPassResponse(c, ramCheckRespData)
+	SendResponse(c, ramCheckRespData.StatusCode, ramCheckRespData)
 }

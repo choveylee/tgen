@@ -6,3 +6,6 @@ tgen
 test-backend/.idea/modules.xml
 test-backend/.idea/test-backend.iml
 test-backend/.idea/vcs.xml
+.idea/tgen.iml
+main_test.go
+.idea/tgen.iml

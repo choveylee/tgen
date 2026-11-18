@@ -15,34 +15,45 @@ func SendFailResponse(c *gin.Context, errCode int, detail string) {
 	errMsg, _ := constant.ErrMsg(errCode)
 	statusCode := constant.StatusCode(errCode)
 
-	c.JSON(statusCode, data.Response{
+	responseData := data.Response{
 		Code:    errCode,
 		Message: errMsg,
 		Detail:  detail,
-	})
+	}
+
+	c.JSON(statusCode, responseData)
 }
 
 // SendPassResponse writes a standardized success response.
 func SendPassResponse(c *gin.Context, respData interface{}) {
 	statusCode := constant.StatusCode(constant.ErrorCodeOK)
 
-	c.JSON(statusCode, data.Response{
+	SendResponse(c, statusCode, respData)
+}
+
+// SendResponse writes a standard data response with the supplied HTTP status.
+func SendResponse(c *gin.Context, statusCode int, respData interface{}) {
+	responseData := data.Response{
 		Code: constant.ErrorCodeOK,
 
 		Data: respData,
-	})
+	}
+
+	c.JSON(statusCode, responseData)
 }
 
 // SendPassResponseEx writes a standardized success response with extended data.
 func SendPassResponseEx(c *gin.Context, respData interface{}, exData interface{}) {
 	statusCode := constant.StatusCode(constant.ErrorCodeOK)
 
-	c.JSON(statusCode, data.Response{
+	responseData := data.Response{
 		Code: constant.ErrorCodeOK,
 
 		Data:   respData,
 		ExData: exData,
-	})
+	}
+
+	c.JSON(statusCode, responseData)
 }
 
 // SendRawJsonResponse writes respData to the response body as JSON.

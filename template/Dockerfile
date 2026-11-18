@@ -1,9 +1,11 @@
-FROM golang:1.25.0 AS builder
+FROM golang:1.27.4 AS builder
+
+ARG GOPROXY=https://proxy.golang.org,direct
 
 ENV GOOS=linux \
     GOARCH=amd64 \
     GO111MODULE=on \
-    GOPROXY=https://goproxy.cn,direct \
+    GOPROXY=${GOPROXY} \
     CGO_ENABLED=0
 
 WORKDIR /app

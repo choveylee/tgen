@@ -4,21 +4,22 @@ import (
 	"net/http"
 )
 
-var errorCodes = make(map[int]string)
+var errorCodeMap = make(map[int]string)
 
 func register(errCode int, errMsg string) int {
-	if _, ok := errorCodes[errCode]; ok {
+	_, ok := errorCodeMap[errCode]
+	if ok {
 		panic("duplicate error code registration")
 	}
 
-	errorCodes[errCode] = errMsg
+	errorCodeMap[errCode] = errMsg
 
 	return errCode
 }
 
 // ErrMsg returns the registered business error message for errCode.
 func ErrMsg(errCode int) (string, bool) {
-	errMsg, ok := errorCodes[errCode]
+	errMsg, ok := errorCodeMap[errCode]
 
 	return errMsg, ok
 }

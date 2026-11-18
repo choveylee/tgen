@@ -3,6 +3,7 @@ package router
 
 import (
 	"context"
+	"strings"
 
 	"github.com/choveylee/tcfg"
 	"github.com/choveylee/tserver"
@@ -12,7 +13,7 @@ import (
 
 // NewRouter constructs the service HTTP router and registers application routes.
 func NewRouter(ctx context.Context) *gin.Engine {
-	appName := tcfg.DefaultString("APP_NAME", "unknown")
+	appName := strings.TrimSpace(tcfg.DefaultString("APP_NAME", "unknown"))
 
 	router := tserver.NewRouter(appName)
 
