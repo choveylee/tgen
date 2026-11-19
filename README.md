@@ -63,3 +63,5 @@ Use `sh ./build.sh` to build and assemble the Linux amd64 release files.
 ## License
 
 This repository does not currently declare a license.
+
+Database migration uses a five-minute overall budget by default. Set `MYSQL_MIGRATION_TIMEOUT` through the application-scoped configuration key to change it. Cancellation closes migration sockets so the caller stops waiting for active SQL and advisory locks. A statement may still finish on the database server. An interrupted migration can leave a dirty migration version and must be inspected before retrying.

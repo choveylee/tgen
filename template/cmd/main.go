@@ -137,13 +137,49 @@ func runMigrate(ctx context.Context) *terror.Terror {
 
 // applyMigrations opens the configured database and creates it only for the
 // MySQL unknown-database error. Driver and pool ownership are kept explicit.
-func applyMigrations(ctx context.Context, config *mysql.Config) error {
+func applyMigrations(ctx context.Context, config *mysql.Config) (err error) {
+	timeout := tcfg.DefaultDuration(tcfg.LocalKey("MYSQL_MIGRATION_TIMEOUT"), 5*time.Minute)
+	if timeout <= 0 {
+		return errors.New("mysql migration timeout must be positive")
+	}
+
+	ctx, cancelMigration := context.WithTimeout(ctx, timeout)
+	defer cancelMigration()
+	defer func() {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("run database migrations: %w", ctx.Err())
+		}
+	}()
+
 	migrationConfig := config.Clone()
 	migrationConfig.MultiStatements = true
-	database, err := sql.Open("mysql", migrationConfig.FormatDSN())
+	originalDial := migrationConfig.DialFunc
+	migrationConfig.DialFunc = func(dialCtx context.Context, network, address string) (net.Conn, error) {
+		dial := originalDial
+		if dial == nil {
+			dialer := &net.Dialer{}
+			dial = dialer.DialContext
+		}
+
+		connection, err := dial(dialCtx, network, address)
+		if err != nil {
+			return nil, err
+		}
+
+		// The migration driver uses Background for SQL. Closing its socket interrupts
+		// all statements and lock waits when the caller cancels or the budget expires.
+		stopCancel := context.AfterFunc(ctx, func() { _ = connection.Close() })
+		tracked := &migrationConnection{Conn: connection, stopCancel: stopCancel}
+
+		return tracked, nil
+	}
+
+	connector, err := mysql.NewConnector(migrationConfig)
 	if err != nil {
 		return fmt.Errorf("open migration database: %w", err)
 	}
+
+	database := sql.OpenDB(connector)
 
 	defer database.Close()
 
@@ -184,11 +220,24 @@ func applyMigrations(ctx context.Context, config *mysql.Config) error {
 		}
 	}()
 
-	if err := client.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	err = client.Up()
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("run database migrations: %w", err)
 	}
 
 	return nil
+}
+
+// migrationConnection releases its cancellation callback when the driver closes the socket.
+type migrationConnection struct {
+	net.Conn
+	stopCancel func() bool
+}
+
+func (connection *migrationConnection) Close() error {
+	connection.stopCancel()
+
+	return connection.Conn.Close()
 }
 
 // createMigrationDatabase quotes the configured database name as an identifier.
