@@ -4,12 +4,12 @@ go 1.27.4
 
 require (
 	github.com/choveylee/tcfg v0.0.0-20261115144344-16ce68da5110
-	github.com/choveylee/tcron v0.0.0-20261116091036-d0cbe301890f
-	github.com/choveylee/tdb v0.0.0-20261116123033-bff3fd79f0a2
+	github.com/choveylee/tcron v0.0.0-20261119020720-19cbbfbb88d5
+	github.com/choveylee/tdb v0.0.0-20261119020721-e6773d435c6e
 	github.com/choveylee/terror v0.0.0-20261115114137-e79937fc25fd
-	github.com/choveylee/thttp v0.0.0-20261118060013-1ecea298af03
-	github.com/choveylee/tlog v0.0.0-20261116080341-5b72778fcc36
-	github.com/choveylee/tserver v0.0.0-20261118083150-b20402c64494
+	github.com/choveylee/thttp v0.0.0-20261119020723-51d3fb510b80
+	github.com/choveylee/tlog v0.0.0-20261119020720-3f6672c90890
+	github.com/choveylee/tserver v0.0.0-20261119020724-5135ef7f18fb
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/golang-migrate/migrate/v4 v4.20.1
@@ -31,7 +31,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/choveylee/tlimiter v0.0.0-20261115111535-a33dbf18b7e0 // indirect
 	github.com/choveylee/tmetric v0.0.0-20261115145406-134cef5db860 // indirect
-	github.com/choveylee/ttrace v0.0.0-20261116234142-05d7c218b32b // indirect
+	github.com/choveylee/ttrace v0.0.0-20261119020621-26f9d63b2ae1 // indirect
 	github.com/choveylee/tutil v0.0.0-20261115111556-68bba448e2ea // indirect
 	github.com/cloudwego/base64x v0.1.7 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
